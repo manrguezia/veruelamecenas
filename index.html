@@ -162,6 +162,8 @@
   .chan.active{background:var(--cyan);color:#03070a;border-color:var(--cyan)}
   .chan.priv{border-color:rgba(255,182,72,.4);color:var(--amber)}
   .chan.priv.active{background:var(--amber);color:#03070a}
+  .chan.wipe{margin-left:auto;border-color:rgba(255,77,109,.5);color:var(--red)}
+  .chan.wipe:hover{background:var(--red);color:#fff}
   .chatlog{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
   .msg{border-left:2px solid var(--line);padding:6px 10px;font-size:13px;line-height:1.5}
   .msg .mw{color:var(--amber);font-size:11px;letter-spacing:1px}
@@ -991,6 +993,20 @@ function buildChanBar(){
     const n=unreadCount(ch.id);
     b.innerHTML=esc(ch.label)+(n>0?` <span class="badge">${n>9?"9+":n}</span>`:"");
     b.addEventListener("click",()=>setChannel(ch.id));bar.appendChild(b);});
+  if(CURRENT&&CURRENT.gm){const w=document.createElement("button");
+    w.className="chan wipe";w.textContent="✖ VACIAR";w.title="Vaciar todo el chat (Máster)";
+    w.addEventListener("click",chatWipe);bar.appendChild(w);}
+}
+function chatWipe(){
+  if(!CURRENT||!CURRENT.gm)return;
+  if(!confirm("¿Vaciar TODO el chat (general y privados)? Esta acción no se puede deshacer."))return;
+  if(FIREBASE_DB_URL){
+    fetch(FIREBASE_DB_URL+CHAT_PATH+".json",{method:"DELETE"}).then(()=>{
+      chatCache=[];lastSeen={};chatRender();}).catch(()=>{});
+  }else{
+    try{localStorage.removeItem("veruela_chat");}catch(e){}
+    chatCache=[];lastSeen={};chatRender();
+  }
 }
 function setChannel(id){curChan=id;buildChanBar();chatRender();
   const priv=id.startsWith("priv_");
