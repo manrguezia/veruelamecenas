@@ -130,6 +130,17 @@
     box-shadow:0 0 12px var(--cyan);transition:width .25s}
   .termdone{margin-top:22px;color:var(--green);font-size:17px;letter-spacing:1px;
     text-shadow:0 0 10px var(--green)}
+  /* ---- intrusión ---- */
+  #intruOverlay{position:fixed;inset:0;z-index:95;background:#0a0203;
+    display:flex;align-items:center;justify-content:center}
+  #intruOverlay::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(255,0,0,0) 0 2px,rgba(255,0,0,.05) 2px 3px)}
+  .intruhd{color:#ff3355;font-size:clamp(22px,4vw,34px);letter-spacing:3px;text-align:center;
+    margin-bottom:22px;text-shadow:0 0 16px rgba(255,51,85,.8);animation:blink 1s steps(1) infinite}
+  .tline.red{color:#ff6d84}
+  .intruloc{margin-top:22px;color:#ff3355;letter-spacing:2px;font-size:15px}
+  .intrunum{display:inline-block;margin-left:12px;font-size:24px;color:#ffd0d6;letter-spacing:5px;
+    text-shadow:0 0 10px rgba(255,51,85,.7)}
   .badge{display:inline-block;min-width:15px;height:15px;line-height:15px;margin-left:6px;
     padding:0 4px;border-radius:8px;background:var(--red);color:#fff;font-size:10px;text-align:center;
     box-shadow:0 0 8px rgba(255,77,109,.6)}
@@ -227,6 +238,14 @@
     <div class="termlines" id="termlines"></div>
     <div class="termbar"><div class="termfill" id="termfill"></div></div>
     <div class="termdone hidden" id="termdone">Bienvenido, operativo. La conexión es segura.</div>
+  </div>
+</div>
+
+<div id="intruOverlay" class="hidden">
+  <div class="term">
+    <div class="intruhd">INTENTO DE INTRUSIÓN DETECTADO</div>
+    <div class="termlines" id="intruLines"></div>
+    <div class="intruloc">LOCALIZANDO UBICACIÓN DEL INTRUSO<span class="intrunum" id="intruNum">000000</span></div>
   </div>
 </div>
 
@@ -374,7 +393,7 @@ function tryLogin(){
   const o=OPERATIVOS.find(x=>x.id===sel.value);
   const pin=$("#pin").value.trim().toLowerCase();
   if(!o){$("#lerr").textContent="// selecciona un operativo";return;}
-  if(pin!==o.pin){$("#lerr").textContent="// clave incorrecta";$("#pin").value="";return;}
+  if(pin!==o.pin){runIntrusion();return;}
   CURRENT=o;$("#lerr").textContent="";
   $("#login").classList.add("hidden");
   runConnect(o.name).then(()=>{
@@ -407,6 +426,31 @@ async function runConnect(name){
   }
   await sleep(350);done.classList.remove("hidden");await sleep(1300);
   ov.classList.add("hidden");
+}
+async function runIntrusion(){
+  const ov=$("#intruOverlay"),lines=$("#intruLines"),num=$("#intruNum");
+  $("#lerr").textContent="";ov.classList.remove("hidden");lines.innerHTML="";
+  const seq=[
+    "Conexión no autorizada — bloqueando sesión…",
+    "Estableciendo enlace inverso con el dispositivo remoto…",
+    "Capturando huella del terminal (MAC / fingerprint)…",
+    "Rastreando saltos de red …… [ traza activa ]",
+    "Triangulando señal por torres cercanas…",
+    "Descargando coordenadas GPS del objetivo…",
+  ];
+  let spinning=true;
+  const spin=setInterval(()=>{if(spinning)
+    num.textContent=String(Math.floor(Math.random()*1000000)).padStart(6,"0");},40);
+  for(let i=0;i<seq.length;i++){
+    const d=document.createElement("div");d.className="tline red";
+    d.textContent="> "+seq[i];lines.appendChild(d);
+    await sleep(240+Math.random()*130);
+  }
+  await sleep(500);spinning=false;clearInterval(spin);
+  num.textContent=String(Math.floor(Math.random()*1000000)).padStart(6,"0");
+  await sleep(900);
+  ov.classList.add("hidden");
+  $("#pin").value="";$("#pin").focus();
 }
 $("#enter").addEventListener("click",tryLogin);
 $("#pin").addEventListener("keydown",e=>{if(e.key==="Enter")tryLogin();});
