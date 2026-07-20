@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OPERACIÓN VERUELA // Planificación</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
   :root{
     --bg:#03070a; --panel:rgba(6,18,24,.85); --cyan:#38e1ff; --green:#39ff9e;
@@ -149,6 +150,21 @@
     font-size:12px;letter-spacing:1px}
   .hbtn:hover{border-color:var(--cyan);box-shadow:0 0 10px rgba(56,225,255,.3)}
   .hbtn.on{background:var(--cyan);color:#03070a;border-color:var(--cyan)}
+  #toggleChat{display:none} /* solo en móvil (ver media query) */
+
+  /* ---- mapa Leaflet ---- */
+  #zmap{position:absolute;inset:0;background:#03070a}
+  .leaflet-container{background:#03070a;font-family:var(--mono)}
+  .leaflet-tooltip.maptip{background:rgba(6,18,24,.9);border:1px solid rgba(56,225,255,.45);
+    color:#bfe9f4;font-family:var(--mono);font-size:11px;letter-spacing:.5px;box-shadow:0 0 10px rgba(0,0,0,.5);
+    padding:2px 7px}
+  .leaflet-tooltip.maptip.main{color:#ff9caa;border-color:rgba(255,77,109,.6)}
+  .leaflet-tooltip.maptip.base{color:#8fffbf;border-color:rgba(57,255,158,.6)}
+  .leaflet-tooltip-right.maptip::before{border-right-color:rgba(56,225,255,.45)}
+  .leaflet-tooltip-left.maptip::before{border-left-color:rgba(56,225,255,.45)}
+  .leaflet-control-layers,.leaflet-bar a{background:rgba(6,18,24,.92)!important;color:var(--cyan)!important;
+    border-color:var(--line)!important}
+  .leaflet-control-layers-expanded{color:var(--cyan);font-family:var(--mono);font-size:12px}
 
   /* ---- layout con chat lateral ---- */
   #body{flex:1;display:flex;min-height:0}
@@ -215,6 +231,7 @@
     #chatside{position:fixed;right:0;top:0;bottom:0;z-index:65;width:min(340px,88vw);
       transform:translateX(100%);transition:.25s}
     #chatside.open{transform:translateX(0)}
+    #toggleChat{display:inline-block}
   }
 </style>
 </head>
@@ -281,11 +298,7 @@
       </div>
     </section>
     <section class="view hidden" id="view-zona">
-      <div id="zona">
-        <svg id="zsvg" viewBox="0 0 1000 660" preserveAspectRatio="xMidYMid meet"></svg>
-        <div class="znote">// RECINTO AMURALLADO DE VERUELA + COMARCA. Trazado esquemático sobre la planta real.
-          El punto exacto de aproximación y aparcamiento está pendiente de acotar.</div>
-      </div>
+      <div id="zmap"></div>
     </section>
 
   </main>
@@ -320,6 +333,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 /* ===================== DATOS ===================== */
 const OPERATIVOS=[
@@ -401,7 +415,7 @@ function tryLogin(){
   runConnect(o.name).then(()=>{
     $("#app").classList.remove("hidden");
     $("#whoName").textContent=o.name+(o.gm?" · CONTROL":"");
-    initThree();buildZona();initSheet();chatInit();
+    initThree();initSheet();chatInit();
   });
 }
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
@@ -463,6 +477,7 @@ document.querySelectorAll(".tab").forEach(t=>{
     t.classList.add("active");const v=t.dataset.view;
     ["mon","zona"].forEach(k=>$("#view-"+k).classList.toggle("hidden",k!==v));
     if(v==="mon"&&renderer)onResize();
+    if(v==="zona")setTimeout(initMap,40);
   });
 });
 /* botón MI HOJA (ventana flotante) */
@@ -826,51 +841,42 @@ function avenue(x0,z0,x1,z1){
 }
 function labelAt(x,z,y,text,color){const spr=makeLabel(text,"#ffcc88",0.75);spr.position.set(NX(x),y,NZ(z));ADD(spr);}
 
-/* ===================== MAPA DE ZONA ===================== */
-const NS="http://www.w3.org/2000/svg";
-function elm(tag,attrs,parent){const e=document.createElementNS(NS,tag);
-  for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
-function buildZona(){
-  const svg=$("#zsvg");svg.innerHTML="";
-  const defs=elm("defs",{},svg);defs.innerHTML=`<filter id="g"><feGaussianBlur stdDeviation="2.6"/></filter>`;
-  for(let x=0;x<=1000;x+=50)elm("line",{x1:x,y1:0,x2:x,y2:660,stroke:"rgba(56,225,255,.05)"},svg);
-  for(let y=0;y<=660;y+=50)elm("line",{x1:0,y1:y,x2:1000,y2:y,stroke:"rgba(56,225,255,.05)"},svg);
-  [120,86,54].forEach(r=>elm("circle",{cx:95,cy:250,r,fill:"none",stroke:"rgba(57,255,158,.16)"},svg));
-  ztxt(95,250,"MONCAYO","zlabel",true);ztxt(95,270,"2314 m · bosque","zsub",true);
-  zroad("M 250,560 C 400,540 470,470 500,430","rgba(56,225,255,.4)");
-  ztxt(210,575,"→ TARAZONA / ZARAGOZA","zsub",false);
-  zroad("M 470,300 C 500,360 470,400 500,430","rgba(255,182,72,.4)");
-  znode(470,292,"TRASMOZ","pueblo · leyenda","#8fc7d8",false);
-  znode(930,150,"VERA DE MONCAYO","pueblo","#8fc7d8",false);
-  const wall=[[360,120],[560,95],[770,120],[930,210],[955,360],[900,500],[720,560],[470,560],[360,470],[340,300]];
-  elm("polygon",{points:wall.map(p=>p.join(",")).join(" "),fill:"rgba(56,225,255,.03)",stroke:"rgba(56,225,255,.5)","stroke-width":2},svg);
-  wall.forEach(p=>{elm("circle",{cx:p[0],cy:p[1],r:7,fill:"none",stroke:"rgba(56,225,255,.55)","stroke-width":1.5},svg);
-    elm("circle",{cx:p[0],cy:p[1],r:2.5,fill:"#38e1ff"},svg);});
-  ztxt(360,112,"muralla · torres","zsub",false);
-  elm("circle",{cx:360,cy:120,r:10,fill:"none",stroke:"#ffb648","stroke-width":2},svg);
-  ztxt(300,104,"PUERTA TORRE DEL HOMENAJE","zsub",false);
-  zroad("M 360,120 L 640,300","rgba(154,217,255,.6)");
-  for(let i=1;i<9;i++){const t=i/9,x=360+(640-360)*t,y=120+(300-120)*t;
-    elm("circle",{cx:x-6,cy:y+6,r:2.2,fill:"rgba(57,255,158,.5)"},svg);
-    elm("circle",{cx:x+6,cy:y-6,r:2.2,fill:"rgba(57,255,158,.5)"},svg);}
-  zroad("M 470,560 L 560,380","rgba(56,225,255,.14)");
-  zroad("M 720,560 L 640,360","rgba(56,225,255,.14)");
-  elm("rect",{x:600,y:250,width:150,height:170,fill:"rgba(56,225,255,.06)",stroke:"#38e1ff","stroke-width":1.6},svg);
-  elm("rect",{x:610,y:255,width:130,height:34,fill:"none",stroke:"#38e1ff","stroke-width":1.1},svg);
-  elm("rect",{x:660,y:300,width:70,height:70,fill:"none",stroke:"#39ff9e","stroke-width":1.1},svg);
-  znode(675,335,"MONASTERIO","iglesia · claustro · refectorio","#38e1ff",true);
-  elm("rect",{x:470,y:300,width:110,height:60,fill:"rgba(154,217,255,.04)",stroke:"rgba(154,217,255,.5)","stroke-width":1.2},svg);
-  ztxt(476,316,"PALACIO ABACIAL","zsub",false);ztxt(476,330,"· Aljibe · Molino","zsub",false);
-  znode(300,470,"CAPILLA DE LA APARICIÓN","exterior","#5b8aa0",false);
-  ztxt(930,620,"N ↑","zsub",true);
+/* ===================== MAPA DE ZONA (Leaflet + OSM/OpenTopoMap) ===================== */
+let map=null;
+/* PUNTOS DE INTERÉS. Coordenadas [lat, lon]. La "Casa base" es provisional:
+   dime la ubicación exacta (o un punto en el mapa) y la coloco. */
+const POI=[
+ {ll:[41.7333,-1.6883],r:9,c:"#ff4d6d",t:"Monasterio de Veruela",cls:"main"},
+ {ll:[41.7385,-1.7060],r:9,c:"#39ff9e",t:"Casa base del equipo (provisional)",cls:"base"},
+ {ll:[41.7406,-1.6986],r:6,c:"#38e1ff",t:"Vera de Moncayo"},
+ {ll:[41.7469,-1.7261],r:6,c:"#38e1ff",t:"Trasmoz"},
+ {ll:[41.7186,-1.7086],r:6,c:"#38e1ff",t:"Alcalá de Moncayo"},
+ {ll:[41.7583,-1.7375],r:6,c:"#38e1ff",t:"Litago"},
+ {ll:[41.7128,-1.7517],r:6,c:"#38e1ff",t:"Añón de Moncayo"},
+ {ll:[41.8556,-1.7136],r:6,c:"#38e1ff",t:"Grisel"},
+ {ll:[41.9042,-1.7239],r:7,c:"#9ad9ff",t:"Tarazona"},
+ {ll:[41.8339,-1.5350],r:7,c:"#9ad9ff",t:"Borja"},
+ {ll:[41.7877,-1.8367],r:7,c:"#ffb060",t:"Moncayo · Parque Natural"},
+];
+function initMap(){
+  if(typeof L==="undefined"){return;} // Leaflet aún no cargado
+  if(map){map.invalidateSize();return;}
+  map=L.map("zmap",{zoomControl:true}).setView([41.7360,-1.6980],13);
+  const dark=L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    {maxZoom:19,subdomains:"abcd",attribution:'&copy; OpenStreetMap &copy; CARTO'});
+  const topo=L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    {maxZoom:17,attribution:'&copy; OpenStreetMap · SRTM · &copy; OpenTopoMap'});
+  const osm=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {maxZoom:19,attribution:'&copy; OpenStreetMap'});
+  dark.addTo(map);
+  L.control.layers({"Oscuro":dark,"Relieve / pistas":topo,"Callejero":osm},null,{position:"topright"}).addTo(map);
+  L.control.scale({imperial:false}).addTo(map);
+  POI.forEach(p=>{
+    L.circleMarker(p.ll,{radius:p.r,color:p.c,weight:2,fillColor:p.c,fillOpacity:.55})
+     .addTo(map)
+     .bindTooltip(p.t,{permanent:true,direction:"right",className:"maptip"+(p.cls?" "+p.cls:"")});
+  });
 }
-function ztxt(x,y,s,cls,center){const t=elm("text",{x,y,class:cls},$("#zsvg"));if(center)t.setAttribute("text-anchor","middle");t.textContent=s;}
-function zroad(d,color){elm("path",{d,fill:"none",stroke:color,"stroke-width":2.2,"stroke-dasharray":"2 6","stroke-linecap":"round"},$("#zsvg"));}
-function znode(x,y,name,sub,color,big){const svg=$("#zsvg");
-  elm("circle",{cx:x,cy:y,r:big?13:8,fill:color,opacity:.18,filter:"url(#g)"},svg);
-  elm("circle",{cx:x,cy:y,r:big?6:4,fill:color},svg);
-  const t=elm("text",{x:x+15,y:y+1,class:"zlabel",fill:color},svg);t.textContent=name;
-  const s=elm("text",{x:x+15,y:y+15,class:"zsub"},svg);s.textContent=sub;}
 
 /* ===================== HOJAS DE PERSONAJE (datos de los PDF) ===================== */
 const CHARS={
