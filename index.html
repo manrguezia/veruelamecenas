@@ -225,6 +225,7 @@
     background:#04141b;padding:7px 10px;cursor:pointer;transition:.12s}
   .srow:hover{border-color:var(--cyan);box-shadow:0 0 10px rgba(56,225,255,.25)}
   .srow .k{font-size:12px;color:#bfe9f4}.srow .v{font-size:14px;color:var(--cyan)}
+  .srow.dim{opacity:.72}.srow.dim .k{color:#8fb6c4}.srow.dim .v{color:#7fbdd0}
 
   @media(max-width:820px){
     header{flex-wrap:wrap;gap:8px} .who{order:5;width:100%;margin:0}
@@ -329,7 +330,8 @@
     <div class="rollnote">Pulsa una característica o habilidad para tirar 1D100. El resultado se envía al chat General.</div>
     <div class="block"><div class="blabel">CARACTERÍSTICAS</div><div class="chips" id="shChars"></div></div>
     <div class="block"><div class="blabel">DERIVADOS</div><div class="chips" id="shDeriv"></div></div>
-    <div class="block"><div class="blabel">HABILIDADES</div><div class="skills" id="shSkills"></div></div>
+    <div class="block"><div class="blabel">HABILIDADES DEL PERSONAJE</div><div class="skills" id="shSkills"></div></div>
+    <div class="block"><div class="blabel">OTRAS HABILIDADES · VALOR BASE</div><div class="skills" id="shOther"></div></div>
   </div>
 </div>
 
@@ -916,6 +918,21 @@ const CHARS={
 };
 const STATNAMES={FUE:"FUE",CON:"CON",DES:"DES",APA:"APA",INT:"INT",POD:"POD",EDU:"EDU",TAM:"TAM"};
 
+/* Lista estándar de habilidades CoC 7e con su valor BASE (%). Especiales:
+   Esquivar = DES/2 · Lengua propia = EDU (se calculan por personaje). */
+const SKILLBASE=[
+ ["Antropología",1],["Armas de fuego (Arma corta)",20],["Armas de fuego (Fusil/Escopeta)",25],
+ ["Arqueología",1],["Arte/Artesanía",5],["Buscar libros",20],["Cerrajería",1],["Charlatanería",5],
+ ["Ciencia",1],["Ciencias ocultas",5],["Conducir automóvil",20],["Conducir maquinaria",1],
+ ["Contabilidad",5],["Crédito",0],["Derecho",5],["Descubrir",25],["Disfrazarse",5],["Electricidad",10],
+ ["Electrónica",1],["Encanto",15],["Escuchar",20],["Esquivar","DES2"],["Historia",5],["Informática",5],
+ ["Intimidar",15],["Juego de manos",10],["Lanzar",20],["Lengua propia","EDU"],["Otras lenguas",1],
+ ["Mecánica",10],["Medicina",1],["Nadar",20],["Naturaleza",10],["Orientarse",10],["Pelea",25],
+ ["Persuasión",10],["Pilotar",1],["Primeros auxilios",30],["Psicoanálisis",1],["Psicología",10],
+ ["Saltar",20],["Seguir rastros",10],["Sigilo",20],["Supervivencia",10],["Tasación",5],["Trepar",20],
+];
+const normSkill=s=>s.toLowerCase().split("(")[0].replace(/\/\s*$/,"").trim();
+
 let viewedId=null;
 function initSheet(){
   if(CURRENT.gm){
@@ -941,10 +958,21 @@ function renderSheet(id){
   dv.appendChild(chip("BON.DAÑO",c.bd,false));
   dv.appendChild(chip("CORP.",c.corp,false));
   const sk=$("#shSkills");sk.innerHTML="";
-  Object.entries(c.skills).forEach(([name,v])=>{const r=document.createElement("div");r.className="srow";
-    r.innerHTML=`<span class="k">${name}</span><span class="v">${v}%</span>`;
-    r.addEventListener("click",()=>roll(name,v));sk.appendChild(r);});
+  Object.entries(c.skills).forEach(([name,v])=>sk.appendChild(skillRow(name,v)));
+  // otras habilidades a valor base (excluye las ya entrenadas)
+  const trained=new Set(Object.keys(c.skills).map(normSkill));
+  const other=$("#shOther");other.innerHTML="";
+  SKILLBASE.forEach(([name,base])=>{
+    if(trained.has(normSkill(name)))return;
+    let v=base;
+    if(base==="DES2")v=Math.floor(c.stats.DES/2);
+    else if(base==="EDU")v=c.stats.EDU;
+    other.appendChild(skillRow(name,v,true));
+  });
 }
+function skillRow(name,v,dim){const r=document.createElement("div");r.className="srow"+(dim?" dim":"");
+  r.innerHTML=`<span class="k">${name}</span><span class="v">${v}%</span>`;
+  r.addEventListener("click",()=>roll(name,v));return r;}
 function chip(name,val,clickable,fn){const d=document.createElement("div");
   d.className="chip"+(clickable?"":" na");
   d.innerHTML=`<div class="cn">${name}</div><div class="cv">${val}</div>`+
