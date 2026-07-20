@@ -155,6 +155,7 @@
   /* ---- mapa Leaflet ---- */
   #zmap{position:absolute;inset:0;background:#03070a}
   .leaflet-container{background:#03070a;font-family:var(--mono)}
+  .tiles-boost{filter:brightness(1.7) contrast(1.5) saturate(1.25)}
   .leaflet-tooltip.maptip{background:rgba(6,18,24,.9);border:1px solid rgba(56,225,255,.45);
     color:#bfe9f4;font-family:var(--mono);font-size:11px;letter-spacing:.5px;box-shadow:0 0 10px rgba(0,0,0,.5);
     padding:2px 7px}
@@ -863,7 +864,7 @@ function initMap(){
   if(map){map.invalidateSize();return;}
   map=L.map("zmap",{zoomControl:true}).setView([41.7360,-1.6980],13);
   const dark=L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    {maxZoom:19,subdomains:"abcd",attribution:'&copy; OpenStreetMap &copy; CARTO'});
+    {maxZoom:19,subdomains:"abcd",className:"tiles-boost",attribution:'&copy; OpenStreetMap &copy; CARTO'});
   const topo=L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
     {maxZoom:17,attribution:'&copy; OpenStreetMap · SRTM · &copy; OpenTopoMap'});
   const osm=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
