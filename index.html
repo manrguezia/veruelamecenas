@@ -172,6 +172,11 @@
   main{position:relative;flex:1;overflow:hidden}
   #chatside{width:330px;flex:none;border-left:1px solid var(--line);background:rgba(4,14,20,.6);
     display:flex;flex-direction:column;min-height:0}
+  #chatMobHead{display:none;justify-content:space-between;align-items:center;padding:10px 12px;
+    border-bottom:1px solid var(--line);background:rgba(3,10,14,.85);font-size:11px;letter-spacing:2px;color:var(--dim)}
+  #chatClose{background:transparent;border:1px solid var(--line);color:var(--cyan);
+    font-size:16px;line-height:1;padding:4px 12px;border-radius:3px}
+  #chatClose:hover{background:var(--cyan);color:#03070a}
   .chanbar{display:flex;gap:4px;flex-wrap:wrap;padding:8px;border-bottom:1px solid var(--line);
     background:rgba(3,10,14,.6)}
   .chan{padding:5px 10px;background:transparent;border:1px solid var(--line);color:var(--dim);
@@ -230,9 +235,10 @@
   @media(max-width:820px){
     header{flex-wrap:wrap;gap:8px} .who{order:5;width:100%;margin:0}
     .legend{top:auto;bottom:56px;right:10px}
-    #chatside{position:fixed;right:0;top:0;bottom:0;z-index:65;width:min(340px,88vw);
-      transform:translateX(100%);transition:.25s}
+    #chatside{position:fixed;right:0;top:0;bottom:0;z-index:75;width:min(340px,90vw);
+      transform:translateX(100%);transition:.25s;box-shadow:-8px 0 30px rgba(0,0,0,.5)}
     #chatside.open{transform:translateX(0)}
+    #chatMobHead{display:flex}
     #toggleChat{display:inline-block}
   }
 </style>
@@ -306,6 +312,7 @@
   </main>
 
   <aside id="chatside">
+    <div id="chatMobHead"><span>CHAT · CANAL CIFRADO</span><button id="chatClose">✕</button></div>
     <div class="chanbar" id="chanbar"></div>
     <div class="chatlog" id="chatlog"></div>
     <div class="chatbar">
@@ -491,6 +498,7 @@ $("#openSheet").addEventListener("click",()=>{
 $("#swClose").addEventListener("click",()=>{$("#sheetWin").classList.add("hidden");$("#openSheet").classList.remove("on");});
 /* botón CHAT (mostrar/ocultar barra lateral en móvil) */
 $("#toggleChat").addEventListener("click",()=>{$("#chatside").classList.toggle("open");});
+$("#chatClose").addEventListener("click",()=>{$("#chatside").classList.remove("open");});
 /* arrastrar la ventana de la hoja */
 (function(){let d=false,ox=0,oy=0;const w=()=>$("#sheetWin");
   $("#swHead").addEventListener("pointerdown",e=>{if(e.target.id==="swClose"||e.target.id==="shPick")return;
