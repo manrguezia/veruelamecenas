@@ -11,7 +11,7 @@ import urllib.request, urllib.error
 
 DB   = os.environ["FIREBASE_DB_URL"].rstrip("/")
 KEY  = os.environ["GROQ_API_KEY"].strip()
-MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 PATH = "/veruela_chat"
 RECENT_MS = 3 * 3600 * 1000     # solo responder a mensajes de las últimas 3 h
 
