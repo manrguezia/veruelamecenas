@@ -7,11 +7,11 @@ Claves via variables de entorno (secrets de GitHub): FIREBASE_DB_URL, GROQ_API_K
 """
 import os, time, datetime, json
 from zoneinfo import ZoneInfo
-import urllib.request
+import urllib.request, urllib.error
 
 DB   = os.environ["FIREBASE_DB_URL"].rstrip("/")
-KEY  = os.environ["GROQ_API_KEY"]
-MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+KEY  = os.environ["GROQ_API_KEY"].strip()
+MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
 PATH = "/veruela_chat"
 RECENT_MS = 3 * 3600 * 1000     # solo responder a mensajes de las últimas 3 h
 
@@ -42,8 +42,12 @@ def groq(messages):
     body = json.dumps({"model":MODEL,"temperature":0.7,"max_tokens":180,"messages":messages}).encode()
     req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions",
         data=body, headers={"Authorization":"Bearer "+KEY,"Content-Type":"application/json"}, method="POST")
-    with urllib.request.urlopen(req, timeout=45) as r:
-        d = json.loads(r.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=45) as r:
+            d = json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode(errors="replace")[:400]
+        raise RuntimeError(f"HTTP {e.code} de Groq (modelo={MODEL}): {detail}")
     return d["choices"][0]["message"]["content"].strip()
 
 def main():
