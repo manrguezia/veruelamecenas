@@ -1,7 +1,7 @@
 name: Mecenas
 on:
   schedule:
-    - cron: '2-59/5 * * * *'   # cada 5 min desplazado (evita el :00 congestionado)
+    - cron: '*/5 * * * *'   # cada 5 min desplazado (evita el :00 congestionado)
   workflow_dispatch: {}    # permite ejecutarlo a mano para probar
 jobs:
   mecenas:
