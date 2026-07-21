@@ -363,50 +363,61 @@ const OPERATIVOS=[
    iglesia horizontal arriba (ábside al E), claustro central con lavatorio,
    sala capitular al E, ala sur (cocina/refectorio/cilla), portería al SE. */
 const ZONAS=[
- {id:"iglesia",label:"IGLESIA",kind:"church",objetivo:true,x:40,z:72,w:290,d:136,wallH:74,ridge:42,
-   info:{desc:"Nave cisterciense de tres naves con pilares cruciformes y cabecera con girola y cinco absidiolos. Rosetón y portada abocinada en la fachada oeste. Zona objetivo."}},
- {id:"claustro",label:"CLAUSTRO",kind:"cloister",hub:true,x:98,z:250,w:182,d:156,wallH:26,
+ {id:"iglesia",label:"IGLESIA",kind:"church",objetivo:true,x:250,z:170,w:190,d:500,wallH:82,ridge:46,
+   info:{desc:"Nave cisterciense de tres naves con pilares cruciformes y cabecera al norte con girola y cinco absidiolos. Rosetón y portada abocinada en la fachada sur. Zona objetivo."}},
+ {id:"claustro",label:"CLAUSTRO",kind:"cloister",hub:true,x:470,z:320,w:190,d:200,wallH:28,
    info:{desc:"Claustro gótico con arquerías apuntadas y lavatorio hexagonal. Nudo de paso entre las tres zonas objetivo."}},
- {id:"capitular",label:"SALA CAPITULAR",kind:"hall",objetivo:true,x:286,z:296,w:74,d:110,wallH:40,ridge:20,
-   info:{desc:"Sala capitular gótica al este del claustro, con tumbas. Zona objetivo."}},
- {id:"difuntos",label:"SALA DE DIFUNTOS",kind:"hall",x:40,z:280,w:30,d:140,wallH:30,ridge:12,
-   info:{desc:"Galería oeste (Sala de Difuntos / sacristía), junto a la iglesia."}},
- {id:"cocina",label:"COCINA",kind:"hall",x:90,z:428,w:64,d:106,wallH:32,ridge:16,
+ {id:"capitular",label:"SALA CAPITULAR",kind:"hall",objetivo:true,x:512,z:180,w:108,d:110,wallH:44,ridge:20,
+   info:{desc:"Sala capitular gótica al norte del claustro, con tumbas. Zona objetivo."}},
+ {id:"sacristia",label:"SACRISTÍA",kind:"hall",x:452,z:150,w:46,d:150,wallH:36,ridge:14,
+   info:{desc:"Sacristía y antesacristía, entre la iglesia y la sala capitular."}},
+ {id:"estewing",label:"SCRIPTORIUM",kind:"hall",x:686,z:150,w:184,d:172,wallH:40,ridge:18,
+   info:{desc:"Ala este del monasterio viejo: scriptorium, locutorio, botica y letrinas."}},
+ {id:"abacial",label:"CÁMARA ABACIAL",kind:"hall",x:690,z:330,w:96,d:74,wallH:34,ridge:16,
+   info:{desc:"Cámara abacial y calefactorio, junto al ala este."}},
+ {id:"refectorio",label:"REFECTORIO",kind:"hall",objetivo:true,x:690,z:430,w:290,d:78,wallH:44,ridge:22,
+   info:{desc:"Refectorio del ala sur, alargado hacia el este. Tercera zona objetivo. Dos accesos: cocina y claustro."}},
+ {id:"cocina",label:"COCINA",kind:"hall",x:700,z:520,w:96,d:92,wallH:32,ridge:16,
    info:{desc:"Cocina del ala sur, comunicada con el refectorio por su puerta más descuidada."}},
- {id:"refectorio",label:"REFECTORIO",kind:"hall",objetivo:true,x:158,z:428,w:128,d:126,wallH:44,ridge:22,
-   info:{desc:"Refectorio del ala sur, perpendicular al claustro. Tercera zona objetivo. Dos accesos: cocina y claustro."}},
- {id:"cilla",label:"CILLA / ALMACÉN",kind:"hall",x:298,z:428,w:64,d:126,wallH:28,ridge:14,
-   info:{desc:"Cilla o almacén, esquina sureste del ala de dependencias."}},
- {id:"porteria",label:"PORTERÍA",kind:"hall",entrada:true,x:300,z:562,w:64,d:48,wallH:30,ridge:14,
-   info:{desc:"Acceso principal del monasterio nuevo. Guardia fijo de día; el de noche descansa aquí entre rondas."}},
+ {id:"cilla",label:"CILLA / ALMACÉN",kind:"hall",x:470,z:592,w:230,d:66,wallH:26,ridge:12,
+   info:{desc:"Cilla o almacén, ala sur, junto a la Puerta de los Conversos."}},
+ {id:"porteria",label:"PORTERÍA",kind:"hall",entrada:true,x:706,z:634,w:80,d:70,wallH:30,ridge:14,
+   info:{desc:"Portería del monasterio nuevo (acceso principal). Guardia fijo de día; el de noche descansa aquí entre rondas."}},
+ {id:"nuevo",label:"MONASTERIO NUEVO",kind:"cloisternew",x:824,z:526,w:224,d:214,wallH:50,
+   info:{desc:"Gran claustro barroco del siglo XVII. No forma parte de las zonas objetivo, pero es paso y volumen imponente del recinto."}},
+ {id:"sanbernardo",label:"CAPILLA SAN BERNARDO",kind:"hall",x:150,z:250,w:80,d:66,wallH:36,ridge:16,
+   info:{desc:"Capilla de San Bernardo, adosada al costado oeste de la iglesia."}},
+ {id:"difuntos",label:"SALA DE DIFUNTOS",kind:"hall",x:150,z:332,w:72,d:58,wallH:28,ridge:12,
+   info:{desc:"Sala de Difuntos y cementerio, al oeste de la iglesia."}},
 ];
 
 /* ACCESOS (puertas) — x,z planta; wall: 'N'|'S'|'E'|'W' (muro y normal exterior).
    Sin datos de juego: solo identifican la puerta. */
 const ACCESOS=[
- {id:"a-porteria",x:332,z:610,wall:"S",short:"PORTERÍA",label:"Portería principal (acceso al monasterio nuevo)",zone:"porteria"},
- {id:"a-iglesia",x:250,z:208,wall:"S",short:"P. IGLESIA",label:"Puerta de la Iglesia, desde el claustro",zone:"iglesia"},
- {id:"a-iglesia-o",x:40,z:140,wall:"W",short:"PORTADA OESTE",label:"Portada principal de la iglesia (fachada oeste)",zone:"iglesia"},
- {id:"a-capitular",x:286,z:352,wall:"W",short:"S. CAPITULAR",label:"Puerta de la Sala Capitular, desde el claustro",zone:"capitular"},
- {id:"a-ref-claustro",x:222,z:428,wall:"N",short:"REF·CLAUSTRO",label:"Refectorio, acceso desde el claustro",zone:"refectorio"},
- {id:"a-ref-cocina",x:158,z:486,wall:"W",short:"REF·COCINA",label:"Refectorio, acceso desde la cocina",zone:"refectorio"},
- {id:"a-cocina",x:122,z:428,wall:"N",short:"COCINA",label:"Cocina, acceso desde el claustro",zone:"cocina"},
- {id:"a-cilla",x:330,z:428,wall:"N",short:"CILLA",label:"Cilla / almacén, acceso desde el claustro",zone:"cilla"},
- {id:"a-difuntos",x:55,z:420,wall:"S",short:"S. DIFUNTOS",label:"Sala de Difuntos, acceso sur",zone:"difuntos"},
+ {id:"a-porteria",x:746,z:704,wall:"S",short:"PORTERÍA",label:"Portería principal (acceso al monasterio nuevo)",zone:"porteria"},
+ {id:"a-portada",x:345,z:670,wall:"S",short:"PORTADA IGLESIA",label:"Portada principal de la iglesia (fachada sur)",zone:"iglesia"},
+ {id:"a-monjes",x:440,z:340,wall:"E",short:"ENTRADA MONJES",label:"Entrada de monjes: iglesia desde el claustro",zone:"iglesia"},
+ {id:"a-conversos",x:440,z:600,wall:"E",short:"P. CONVERSOS",label:"Puerta de los Conversos, iglesia al ala sur",zone:"iglesia"},
+ {id:"a-capitular",x:566,z:290,wall:"S",short:"S. CAPITULAR",label:"Puerta de la Sala Capitular, desde el claustro",zone:"capitular"},
+ {id:"a-ref-claustro",x:690,z:470,wall:"W",short:"REF·CLAUSTRO",label:"Refectorio, acceso desde el claustro",zone:"refectorio"},
+ {id:"a-ref-cocina",x:748,z:508,wall:"S",short:"REF·COCINA",label:"Refectorio, acceso desde la cocina",zone:"refectorio"},
+ {id:"a-cocina",x:700,z:565,wall:"W",short:"COCINA",label:"Cocina, acceso desde el ala sur",zone:"cocina"},
+ {id:"a-cilla",x:560,z:592,wall:"N",short:"CILLA",label:"Cilla / almacén, acceso desde el claustro",zone:"cilla"},
+ {id:"a-nuevo",x:824,z:634,wall:"W",short:"M. NUEVO",label:"Monasterio Nuevo, acceso desde el viejo",zone:"nuevo"},
 ];
 
 /* CÁMARAS — x,z planta; yaw en planta (0=E, 90=S, 180=O, 270=N) apuntando a su objetivo */
 const CAMARAS=[
- {id:"c-porteria",x:332,z:596,yaw:90,range:120,label:"Portería",cubre:"Acceso principal y aproximación exterior."},
- {id:"c-cl-no",x:112,z:264,yaw:45,range:110,label:"Claustro NO",cubre:"Galería noroeste y paso hacia la iglesia."},
- {id:"c-cl-ne",x:266,z:264,yaw:135,range:110,label:"Claustro NE",cubre:"Galería noreste y paso a la Sala Capitular."},
- {id:"c-cl-so",x:112,z:392,yaw:315,range:110,label:"Claustro SO",cubre:"Galería suroeste y paso al ala sur."},
- {id:"c-cl-se",x:266,z:392,yaw:225,range:110,label:"Claustro SE",cubre:"Galería sureste y paso al refectorio."},
- {id:"c-iglesia",x:250,z:232,yaw:270,range:120,label:"Entrada Iglesia",cubre:"Puerta de la iglesia desde el claustro."},
- {id:"c-capitular",x:272,z:352,yaw:0,range:95,label:"Entrada Sala Capitular",cubre:"Puerta de la Sala Capitular."},
- {id:"c-ref-cl",x:222,z:414,yaw:90,range:110,label:"Refectorio (claustro)",cubre:"Acceso al refectorio desde el claustro."},
- {id:"c-ref-co",x:172,z:486,yaw:180,range:95,label:"Refectorio (cocina)",cubre:"Acceso al refectorio desde la cocina."},
- {id:"c-plaza",x:14,z:140,yaw:0,range:150,label:"Plaza exterior",cubre:"Fachada oeste y Plaza de la Orden."},
+ {id:"c-porteria",x:746,z:722,yaw:90,range:150,label:"Portería",cubre:"Acceso principal y aproximación exterior."},
+ {id:"c-cl-no",x:486,z:336,yaw:45,range:120,label:"Claustro NO",cubre:"Galería noroeste y paso a la iglesia."},
+ {id:"c-cl-ne",x:644,z:336,yaw:135,range:120,label:"Claustro NE",cubre:"Galería noreste y paso a la Sala Capitular."},
+ {id:"c-cl-so",x:486,z:504,yaw:315,range:120,label:"Claustro SO",cubre:"Galería suroeste y paso al ala sur."},
+ {id:"c-cl-se",x:644,z:504,yaw:225,range:120,label:"Claustro SE",cubre:"Galería sureste y paso al refectorio."},
+ {id:"c-monjes",x:460,z:340,yaw:180,range:130,label:"Entrada Monjes",cubre:"Puerta de la iglesia desde el claustro."},
+ {id:"c-capitular",x:566,z:306,yaw:270,range:110,label:"Entrada Sala Capitular",cubre:"Puerta de la Sala Capitular."},
+ {id:"c-ref-cl",x:674,z:470,yaw:0,range:130,label:"Refectorio (claustro)",cubre:"Acceso al refectorio desde el claustro."},
+ {id:"c-ref-co",x:748,z:524,yaw:90,range:110,label:"Refectorio (cocina)",cubre:"Acceso al refectorio desde la cocina."},
+ {id:"c-fachada",x:345,z:706,yaw:270,range:170,label:"Fachada sur",cubre:"Portada de la iglesia y plaza sur."},
 ];
 
 /* ===================== LOGIN ===================== */
@@ -545,18 +556,18 @@ function zoneOfCam(c){let best=null,bd=1e9;ZONAS.forEach(z=>{const cx=z.x+z.w/2,
 
 /* ===================== THREE ===================== */
 let scene,camera,renderer,raycaster,mouse,pickZones=[],pickCams=[],pickAcc=[],markers=[],coneMap={};
-let camState={az:-0.85,pol:0.95,rad:760,tx:0,tz:0};let inited=false;
+let camState={az:-0.85,pol:0.95,rad:1050,tx:0,tz:0};let inited=false;
 let coreGroup,anexGroup,G=null,anexMats=[];
 function ADD(o){(G||scene).add(o);return o;}
 function collectAnex(){anexGroup.traverse(o=>{if(o.material&&!o.userData._done){o.userData._done=1;
   anexMats.push({m:o.material,op0:o.material.opacity});}});}
 function setAnexGhost(on){const f=on?0.12:1;anexMats.forEach(o=>{o.m.opacity=o.op0*f;});}
-const CX=200, CZC=330, SC=1.0;
+const CX=410, CZC=340, SC=0.62;
 const NX=x=>(x-CX)*SC, NZ=z=>(z-CZC)*SC;
 function V(x,z,y){return new THREE.Vector3(NX(x),y,NZ(z));}
 function wire(c,o){return new THREE.LineBasicMaterial({color:c,transparent:true,opacity:o==null?0.9:o});}
 function face(c,o){return new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:o,side:THREE.DoubleSide,depthWrite:false});}
-const COL={obj:0x38e1ff,norm:0x2fb6d8,hub:0x59f2c0,ent:0x9ad9ff,brick:0xff9a5a,roof:0x2a86a0,acc:0x39ff9e,cam:0xff4d6d};
+const COL={obj:0x38e1ff,norm:0x2fb6d8,hub:0x59f2c0,ent:0x9ad9ff,brick:0xff9a5a,roof:0x2a86a0,acc:0x39ff9e,cam:0xff4d6d,nuevo:0xb78cff};
 
 function initThree(){
   if(inited){onResize();return;}inited=true;
@@ -567,8 +578,8 @@ function initThree(){
   camera=new THREE.PerspectiveCamera(48,1,1,6000);
   raycaster=new THREE.Raycaster();mouse=new THREE.Vector2();
   raycaster.params.Points={threshold:6};
-  const grid=new THREE.GridHelper(2400,60,0x0d3b47,0x0a2530);scene.add(grid);
-  const base=new THREE.Mesh(new THREE.PlaneGeometry(2400,2400),face(0x04141b,.35));
+  const grid=new THREE.GridHelper(3200,64,0x0d3b47,0x0a2530);scene.add(grid);
+  const base=new THREE.Mesh(new THREE.PlaneGeometry(3200,3200),face(0x04141b,.35));
   base.rotation.x=-Math.PI/2;base.position.y=-.4;scene.add(base);
   coreGroup=new THREE.Group();anexGroup=new THREE.Group();scene.add(coreGroup);scene.add(anexGroup);
   G=coreGroup;
@@ -620,79 +631,83 @@ function arcade(ax,az,bx,bz,y0,count,H,apex,color){
     L.push(l,lt,lt,ap,ap,rt,rt,r);}
   ADD(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(L),wire(color,.7)));
 }
-function roseWest(z){const cx=z.x, cz=z.z+z.d/2, cy=z.wallH*0.6, r=z.d*0.18;
-  const pts=[];for(let i=0;i<=24;i++){const a=i/24*Math.PI*2;pts.push(new THREE.Vector3(0,Math.sin(a)*r,Math.cos(a)*r));}
+function roseAt(cx,cz,cy,r,axis,col){
+  const P=a=> axis==='z'? new THREE.Vector3(Math.cos(a)*r,Math.sin(a)*r,0)
+                         : new THREE.Vector3(0,Math.sin(a)*r,Math.cos(a)*r);
+  const pts=[];for(let i=0;i<=24;i++)pts.push(P(i/24*Math.PI*2));
   const grp=new THREE.Group();grp.position.set(NX(cx),cy,NZ(cz));
-  grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),wire(COL.obj,.9)));
-  const sp=[];for(let i=0;i<8;i++){const a=i/8*Math.PI*2;sp.push(new THREE.Vector3(0,0,0),new THREE.Vector3(0,Math.sin(a)*r,Math.cos(a)*r));}
-  grp.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(sp),wire(COL.obj,.6)));
+  grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),wire(col,.9)));
+  const sp=[];for(let i=0;i<8;i++){const a=i/8*Math.PI*2;sp.push(new THREE.Vector3(0,0,0),P(a));}
+  grp.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(sp),wire(col,.6)));
   ADD(grp);
 }
+function halfCyl(px,pz,rad,hh,rotY,col){
+  const geo=new THREE.CylinderGeometry(rad,rad,hh,16,1,false,0,Math.PI);
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(geo),wire(col,.7));
+  e.position.set(NX(px),hh/2,NZ(pz));e.rotation.y=rotY;ADD(e);
+  const f=new THREE.Mesh(geo,face(col,.05));f.position.copy(e.position);f.rotation.y=rotY;ADD(f);
+}
 function buildApse(z){
-  const ex=z.x+z.w, cz=z.z+z.d/2;const r=z.d*0.5, h=z.wallH*0.9;
-  const mk=(px,pz,rad,hh)=>{
-    const geo=new THREE.CylinderGeometry(rad,rad,hh,16,1,false,-Math.PI/2,Math.PI);
-    const e=new THREE.LineSegments(new THREE.EdgesGeometry(geo),wire(COL.obj,.7));
-    e.position.set(NX(px),hh/2,NZ(pz));ADD(e);
-    const f=new THREE.Mesh(geo,face(COL.obj,.05));f.position.copy(e.position);ADD(f);
-    arcGround(px,pz,rad,-Math.PI/2,Math.PI/2,COL.obj);
-  };
-  mk(ex,cz,r,h);
-  mk(ex,cz-r*0.66,r*0.32,h*0.6); mk(ex,cz+r*0.66,r*0.32,h*0.6);
-  mk(ex+r*0.5,cz-r*0.33,r*0.30,h*0.55); mk(ex+r*0.5,cz+r*0.33,r*0.30,h*0.55);
-  mk(ex+r*0.72,cz,r*0.30,h*0.55);
+  const cx=z.x+z.w/2, cz=z.z, r=z.w*0.5, h=z.wallH*0.92;
+  halfCyl(cx,cz,r,h,Math.PI/2,COL.obj);            // cabecera curva hacia el norte
+  arcGround(cx,cz,r,Math.PI,Math.PI*2,COL.obj);
+  const offs=[[-r*0.78,-r*0.30],[-r*0.42,-r*0.62],[0,-r*0.80],[r*0.42,-r*0.62],[r*0.78,-r*0.30]];
+  offs.forEach(o=>{halfCyl(cx+o[0],cz+o[1],r*0.26,h*0.55,Math.PI/2,COL.obj);
+    arcGround(cx+o[0],cz+o[1],r*0.26,Math.PI,Math.PI*2,COL.obj);});
 }
 function buildTower(){
-  const bx=286,bz=42,w=38,d=34;const tiers=[[0,30,COL.norm],[30,58,COL.norm],[58,86,COL.brick],[86,110,COL.brick]];
+  const bx=408,bz=205,w=40,d=40;const tiers=[[0,34,COL.norm],[34,64,COL.norm],[64,94,COL.brick],[94,122,COL.brick]];
   tiers.forEach(([y0,y1,col])=>{const h=y1-y0;const geo=new THREE.BoxGeometry(w*SC,h,d*SC);
     const e=new THREE.LineSegments(new THREE.EdgesGeometry(geo),wire(col,.85));
     e.position.set(NX(bx+w/2),y0+h/2,NZ(bz+d/2));ADD(e);
     const f=new THREE.Mesh(geo,face(col,.05));f.position.copy(e.position);ADD(f);});
-  arcade(bx,bz,bx+w,bz,90,2,14,3,COL.brick);
-  arcade(bx,bz+d,bx+w,bz+d,90,2,14,3,COL.brick);
-  const capE=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.ConeGeometry(w*0.62,24,4)),wire(COL.brick,.85));
-  capE.position.set(NX(bx+w/2),110+12,NZ(bz+d/2));capE.rotation.y=Math.PI/4;ADD(capE);
+  arcade(bx,bz,bx+w,bz,100,2,14,3,COL.brick);
+  arcade(bx,bz+d,bx+w,bz+d,100,2,14,3,COL.brick);
+  const capE=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.ConeGeometry(w*0.62,26,4)),wire(COL.brick,.85));
+  capE.position.set(NX(bx+w/2),122+13,NZ(bz+d/2));capE.rotation.y=Math.PI/4;ADD(capE);
 }
 
 function buildZone(z){
-  const col=z.objetivo?COL.obj:z.hub?COL.hub:z.entrada?COL.ent:COL.norm;
+  const col=z.objetivo?COL.obj:z.hub?COL.hub:z.entrada?COL.ent:(z.kind==="cloisternew"?COL.nuevo:COL.norm);
   rectGround(z.x,z.z,z.w,z.d,col);
-  if(z.kind==="cloister"){
+  if(z.kind==="cloister"||z.kind==="cloisternew"){
     boxWalls(z.x,z.z,z.w,z.d,z.wallH,col,.03);
-    const iw=z.w*0.6,id=z.d*0.6,ix=z.x+(z.w-iw)/2,iz=z.z+(z.d-id)/2;
-    rectGround(ix,iz,iw,id,0x1f6f7a,.6);
-    arcade(ix,iz,ix+iw,iz,2,8,z.wallH*0.72,4,col);
-    arcade(ix,iz+id,ix+iw,iz+id,2,8,z.wallH*0.72,4,col);
-    arcade(ix,iz,ix,iz+id,2,7,z.wallH*0.72,4,col);
-    arcade(ix+iw,iz,ix+iw,iz+id,2,7,z.wallH*0.72,4,col);
-    // corner pillars
+    const ir=z.kind==="cloisternew"?0.62:0.6;
+    const iw=z.w*ir,id=z.d*ir,ix=z.x+(z.w-iw)/2,iz=z.z+(z.d-id)/2;
+    rectGround(ix,iz,iw,id,z.kind==="cloisternew"?0x6a4fb0:0x1f6f7a,.6);
+    const ca=Math.max(6,Math.round(iw/26)),cb=Math.max(6,Math.round(id/26));
+    arcade(ix,iz,ix+iw,iz,2,ca,z.wallH*0.72,4,col);
+    arcade(ix,iz+id,ix+iw,iz+id,2,ca,z.wallH*0.72,4,col);
+    arcade(ix,iz,ix,iz+id,2,cb,z.wallH*0.72,4,col);
+    arcade(ix+iw,iz,ix+iw,iz+id,2,cb,z.wallH*0.72,4,col);
     [[ix,iz],[ix+iw,iz],[ix,iz+id],[ix+iw,iz+id]].forEach(p=>pillar(p[0],p[1],col));
-    // lavatorio hex
-    const lx=z.x+z.w*0.34,lz=z.z+z.d*0.5;
-    const hg=new THREE.CylinderGeometry(9,9,z.wallH*1.05,6);
-    const he=new THREE.LineSegments(new THREE.EdgesGeometry(hg),wire(COL.hub,.85));
-    he.position.set(NX(lx),z.wallH*0.52,NZ(lz));ADD(he);
-    const hm=new THREE.Mesh(hg,face(COL.hub,.1));hm.position.copy(he.position);ADD(hm);
-    const dm=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.ConeGeometry(9,10,6)),wire(COL.hub,.85));
-    dm.position.set(NX(lx),z.wallH*1.05+5,NZ(lz));ADD(dm);
-    arcGround(lx,lz,9,0,Math.PI*2,COL.hub);
+    if(z.kind==="cloister"){
+      const lx=z.x+z.w*0.7,lz=z.z+z.d*0.5;
+      const hg=new THREE.CylinderGeometry(9,9,z.wallH*1.05,6);
+      const he=new THREE.LineSegments(new THREE.EdgesGeometry(hg),wire(COL.hub,.85));
+      he.position.set(NX(lx),z.wallH*0.52,NZ(lz));ADD(he);
+      const hm=new THREE.Mesh(hg,face(COL.hub,.1));hm.position.copy(he.position);ADD(hm);
+      const dm=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.ConeGeometry(9,10,6)),wire(COL.hub,.85));
+      dm.position.set(NX(lx),z.wallH*1.05+5,NZ(lz));ADD(dm);
+      arcGround(lx,lz,9,0,Math.PI*2,COL.hub);
+    }
   } else {
     boxWalls(z.x,z.z,z.w,z.d,z.wallH,col,.045);
     if(z.ridge)gableRoof(z.x,z.z,z.w,z.d,z.wallH,z.ridge,col);
   }
   if(z.kind==="church"){
-    // two rows of nave pillars
-    const n=7;for(let i=0;i<n;i++){const px=z.x+30+i*(z.w-70)/(n-1);
-      pillar(px,z.z+z.d*0.34,col);pillar(px,z.z+z.d*0.66,col);}
-    arcade(z.x+30,z.z,z.x+z.w-30,z.z,z.wallH*0.55,8,z.wallH*0.26,4,col);
-    arcade(z.x+30,z.z+z.d,z.x+z.w-30,z.z+z.d,z.wallH*0.55,8,z.wallH*0.26,4,col);
-    roseWest(z);
+    const n=8;for(let i=0;i<n;i++){const pz=z.z+40+i*(z.d-80)/(n-1);
+      pillar(z.x+z.w*0.32,pz,col);pillar(z.x+z.w*0.68,pz,col);}
+    arcade(z.x,z.z+40,z.x,z.z+z.d-20,z.wallH*0.55,10,z.wallH*0.24,4,col);
+    arcade(z.x+z.w,z.z+40,z.x+z.w,z.z+z.d-20,z.wallH*0.55,10,z.wallH*0.24,4,col);
+    roseAt(z.x+z.w/2,z.z+z.d,z.wallH*0.62,z.w*0.2,'z',col);
+    buildApse(z);
   }
   const W=z.w*SC,D=z.d*SC,hh=Math.max(z.wallH,34);
   const pick=new THREE.Mesh(new THREE.BoxGeometry(W,hh,D),new THREE.MeshBasicMaterial({visible:false}));
   pick.position.set(NX(z.x+z.w/2),hh/2,NZ(z.z+z.d/2));pick.userData.zone=z;ADD(pick);pickZones.push(pick);
-  const spr=makeLabel(z.label,z.objetivo?"#38e1ff":z.hub?"#59f2c0":"#8fc7d8",1);
-  spr.position.set(NX(z.x+z.w/2),z.wallH+(z.ridge||0)+20,NZ(z.z+z.d/2));ADD(spr);
+  const spr=makeLabel(z.label,z.objetivo?"#38e1ff":z.hub?"#59f2c0":z.kind==="cloisternew"?"#c9adff":"#8fc7d8",1);
+  spr.position.set(NX(z.x+z.w/2),z.wallH+(z.ridge||0)+22,NZ(z.z+z.d/2));ADD(spr);
 }
 
 /* ---- doors (accesos) ---- */
@@ -782,10 +797,10 @@ function addEvents(){
       camState.az-=dx*0.005;camState.pol=Math.max(0.15,Math.min(1.45,camState.pol-dy*0.004));
     }});
   el.addEventListener("pointerup",e=>{drag=false;if(btn===0&&moved<6)pick(e);});
-  el.addEventListener("wheel",e=>{e.preventDefault();camState.rad=Math.max(180,Math.min(1300,camState.rad+e.deltaY*0.5));},{passive:false});
+  el.addEventListener("wheel",e=>{e.preventDefault();camState.rad=Math.max(180,Math.min(2600,camState.rad+e.deltaY*0.5));},{passive:false});
   let pd=0;el.addEventListener("touchmove",e=>{if(e.touches.length===2){e.preventDefault();
     const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
-    if(pd)camState.rad=Math.max(180,Math.min(1300,camState.rad+(pd-d)*1.2));pd=d;}},{passive:false});
+    if(pd)camState.rad=Math.max(180,Math.min(2600,camState.rad+(pd-d)*1.2));pd=d;}},{passive:false});
   el.addEventListener("touchend",()=>pd=0);window.addEventListener("resize",onResize);
 }
 function pick(e){const r=renderer.domElement.getBoundingClientRect();
@@ -804,18 +819,18 @@ function onResize(){if(!renderer)return;const m=$("#view-mon");const w=m.clientW
 /* ===================== MURALLA + ANEXOS (plano 02) ===================== */
 const AMBER=0xffb060, AMBER2=0xe8933a;
 function buildAnexos(){
-  // muralla poligonal con torres
-  const WALL=[[-280,40],[-40,-60],[240,-80],[440,-20],[490,220],[450,470],[350,660],[100,720],[-200,660],[-340,340]];
+  // muralla poligonal con torres (rodea todo el recinto)
+  const WALL=[[-320,60],[80,-120],[600,-140],[1080,-40],[1200,360],[1100,660],[760,800],[300,820],[-120,720],[-340,420]];
   enclosure(WALL,30,AMBER2);
   WALL.forEach((p,i)=>{const gate=(i===0);towerAt(p[0],p[1],gate?16:11,gate?60:32,gate?AMBER:AMBER2);});
-  labelAt(-280,40,64,"PUERTA TORRE DEL HOMENAJE",AMBER);
-  // avenida arbolada desde la puerta hasta la fachada oeste
-  avenue(-268,52, 30,140);
-  // anexos (ámbar), edificios del recinto
-  amberBuilding(-152,150,120,110,42,20,"PALACIO ABACIAL");
-  amberBuilding(-150,290,44,54,20,0,"ALJIBE");
-  amberBuilding(-120,470,52,44,26,12,"MOLINO");
-  amberBuilding(-372,348,42,58,30,14,"CAPILLA DE LA APARICIÓN");
+  labelAt(-320,66,64,"PUERTA TORRE DEL HOMENAJE",AMBER);
+  // avenida arbolada desde la puerta hacia el palacio abacial y la iglesia
+  avenue(-300,86, 40,270);
+  // anexos (ámbar) al oeste / suroeste del monasterio viejo
+  amberBuilding(30,250,150,120,44,20,"PALACIO ABACIAL");
+  amberBuilding(-40,400,44,56,20,0,"ALJIBE");
+  amberBuilding(-10,520,52,44,26,12,"MOLINO");
+  amberBuilding(-300,470,42,58,30,14,"CAPILLA DE LA APARICIÓN");
 }
 function enclosure(pts,h,color){
   const bottom=pts.map(p=>V(p[0],p[1],.6));bottom.push(bottom[0].clone());
