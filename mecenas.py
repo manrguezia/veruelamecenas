@@ -41,7 +41,8 @@ def http_post(url, obj):
 def groq(messages):
     body = json.dumps({"model":MODEL,"temperature":0.7,"max_tokens":180,"messages":messages}).encode()
     req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions",
-        data=body, headers={"Authorization":"Bearer "+KEY,"Content-Type":"application/json"}, method="POST")
+        data=body, headers={"Authorization":"Bearer "+KEY,"Content-Type":"application/json",
+                 "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36"}, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=45) as r:
             d = json.loads(r.read().decode())
