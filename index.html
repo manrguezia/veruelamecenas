@@ -142,6 +142,23 @@
   .intruloc{margin-top:22px;color:#ff3355;letter-spacing:2px;font-size:15px}
   .intrunum{display:inline-block;margin-left:12px;font-size:24px;color:#ffd0d6;letter-spacing:5px;
     text-shadow:0 0 10px rgba(255,51,85,.7)}
+  .enterbtn{width:100%;padding:9px;background:rgba(56,225,255,.1);border:1px solid var(--cyan);
+    color:var(--cyan);letter-spacing:2px;font-size:12px}
+  .enterbtn:hover{background:var(--cyan);color:#03070a}
+  /* ---- planta interior ---- */
+  #interior{position:fixed;inset:0;z-index:85;background:#02060a;display:flex;flex-direction:column}
+  .inthead{display:flex;align-items:center;gap:16px;padding:10px 16px;border-bottom:1px solid var(--line);
+    background:rgba(3,10,14,.9);flex-wrap:wrap}
+  #intTitle{font-size:14px;letter-spacing:2px;color:var(--cyan)}
+  .intlegend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--dim);letter-spacing:.5px}
+  .intlegend span{display:flex;align-items:center;gap:5px}
+  .intlegend i{width:10px;height:10px;display:inline-block;border-radius:2px;box-shadow:0 0 6px currentColor}
+  #intClose{margin-left:auto;padding:7px 14px;background:transparent;border:1px solid var(--cyan);
+    color:var(--cyan);font-size:12px;letter-spacing:2px}
+  #intClose:hover{background:var(--cyan);color:#03070a}
+  #intsvg{flex:1;width:100%;min-height:0;background:
+    radial-gradient(ellipse at 50% 45%,#06222e 0%,#03070a 80%)}
+  .intnote{padding:8px 16px;font-size:10px;color:var(--dim);letter-spacing:1px;border-top:1px solid var(--line)}
   .badge{display:inline-block;min-width:15px;height:15px;line-height:15px;margin-left:6px;
     padding:0 4px;border-radius:8px;background:var(--red);color:#fff;font-size:10px;text-align:center;
     box-shadow:0 0 8px rgba(255,77,109,.6)}
@@ -342,6 +359,23 @@
   </div>
 </div>
 
+<div id="interior" class="hidden">
+  <div class="inthead">
+    <div id="intTitle">INTERIOR</div>
+    <div class="intlegend">
+      <span><i style="background:#39ff9e"></i>Puerta</span>
+      <span><i style="background:#ff4d6d"></i>Cámara</span>
+      <span><i style="background:#ffb648"></i>Sensor mov.</span>
+      <span><i style="background:#b78cff"></i>Contacto</span>
+      <span><i style="background:#cdeef7"></i>Cuadro eléc.</span>
+      <span><i style="background:#ff9a5a"></i>Cableado</span>
+    </div>
+    <button id="intClose">SALIR ✕</button>
+  </div>
+  <svg id="intsvg" preserveAspectRatio="xMidYMid meet"></svg>
+  <div class="intnote">Esquema de seguridad orientativo (generado). Ajustable.</div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
@@ -531,6 +565,7 @@ function openZone(z){
   const cams=CAMARAS.filter(c=>zoneOfCam(c)===z.id);
   if(cams.length)h+=`<div class="row"><span class="k">CÁMARAS</span><div class="tagrow">`+
     cams.map(c=>`<span class="tag cam" onclick="openCamById('${c.id}')">◉ ${c.label}</span>`).join("")+`</div></div>`;
+  h+=`<div class="row"><button class="enterbtn" onclick="enterBuilding('${z.id}')">▣ ENTRAR · planta interior</button></div>`;
   $("#pBody").innerHTML=h;$("#panel").classList.add("open");
 }
 function openAccess(id){
@@ -553,6 +588,100 @@ $("#toggleCore").addEventListener("click",()=>{anexOn=!anexOn;setAnexGhost(!anex
   b.textContent=(anexOn?"● ":"○ ")+"MURALLA Y ANEXOS";});
 function zoneOfCam(c){let best=null,bd=1e9;ZONAS.forEach(z=>{const cx=z.x+z.w/2,cz=z.z+z.d/2;
   const d=Math.hypot(cx-c.x,cz-c.z);if(d<bd){bd=d;best=z.id;}});return best;}
+
+/* ===================== PLANTA INTERIOR (esquema de seguridad) ===================== */
+$("#intClose").addEventListener("click",()=>$("#interior").classList.add("hidden"));
+function enterBuilding(id){
+  const z=ZONAS.find(x=>x.id===id);if(!z)return;
+  $("#intTitle").textContent="INTERIOR · "+z.label;
+  buildInterior(z);
+  $("#interior").classList.remove("hidden");
+}
+function buildInterior(z){
+  const VW=1200,VH=780,pad=90;
+  const w=z.w,d=z.d,sc=Math.min((VW-2*pad)/w,(VH-2*pad)/d);
+  const ox=(VW-w*sc)/2,oy=(VH-d*sc)/2;
+  const X=u=>ox+u*sc, Y=v=>oy+v*sc;
+  const svg=$("#intsvg");svg.setAttribute("viewBox",`0 0 ${VW} ${VH}`);
+  const P=[];
+  const rect=(x,y,ww,hh,st,sw,fi)=>P.push(`<rect x="${x}" y="${y}" width="${ww}" height="${hh}" fill="${fi||'none'}" stroke="${st}" stroke-width="${sw}"/>`);
+  const line=(x1,y1,x2,y2,st,sw,dash)=>P.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${st}" stroke-width="${sw}"${dash?` stroke-dasharray="${dash}"`:''}/>`);
+  const circ=(x,y,r,st,fi)=>P.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${fi||'none'}" stroke="${st||'none'}" stroke-width="1.5"/>`);
+  const txt=(x,y,s,fill,size,anc)=>P.push(`<text x="${x}" y="${y}" fill="${fill}" font-family="'Courier New',monospace" font-size="${size||11}" text-anchor="${anc||'start'}">${s}</text>`);
+  const tri=(x,y,r,fill)=>P.push(`<polygon points="${x},${y-r} ${x-r},${y+r} ${x+r},${y+r}" fill="${fill}" opacity=".9"/>`);
+  const wedge=(x,y,ang,spread,len,fill)=>{const a1=ang-spread/2,a2=ang+spread/2;
+    P.push(`<path d="M ${x} ${y} L ${x+Math.cos(a1)*len} ${y+Math.sin(a1)*len} A ${len} ${len} 0 0 1 ${x+Math.cos(a2)*len} ${y+Math.sin(a2)*len} Z" fill="${fill}" opacity=".14" stroke="${fill}" stroke-opacity=".4" stroke-width="1"/>`);};
+
+  // rejilla
+  for(let gx=0;gx<=VW;gx+=40)line(gx,0,gx,VH,"rgba(56,225,255,.045)",1);
+  for(let gy=0;gy<=VH;gy+=40)line(0,gy,VW,gy,"rgba(56,225,255,.045)",1);
+
+  const isCl=z.kind==="cloister"||z.kind==="cloisternew", isCh=z.kind==="church";
+  const col=z.objetivo?"#38e1ff":isCl?(z.kind==="cloisternew"?"#b78cff":"#59f2c0"):"#38e1ff";
+  // muros exteriores
+  rect(X(0),Y(0),w*sc,d*sc,col,2.5,"rgba(56,225,255,.04)");
+  if(isCl){const iw=w*0.6,id=d*0.6;rect(X((w-iw)/2),Y((d-id)/2),iw*sc,id*sc,"#59f2c0",1.6);
+    txt(X(w/2),Y(d/2),"PATIO",col,12,"middle");}
+  if(isCh){ // ábside al norte + rosetón al sur
+    const cx=X(w/2);
+    P.push(`<path d="M ${X(w*0.15)} ${Y(0)} A ${w*0.35*sc} ${w*0.35*sc} 0 0 1 ${X(w*0.85)} ${Y(0)}" fill="none" stroke="${col}" stroke-width="2"/>`);
+    txt(cx,Y(0)-10,"ÁBSIDE / GIROLA",col,11,"middle");
+    circ(cx,Y(d)-2,10,col);txt(cx,Y(d)+22,"ROSETÓN",col,10,"middle");
+  }
+
+  // puertas de esta zona
+  const doors=ACCESOS.filter(a=>a.zone===z.id);
+  const inward={N:[0,1],S:[0,-1],E:[-1,0],W:[1,0]};
+  const doorsLocal=doors.map(a=>{
+    let u,v; if(a.wall==="N"){u=a.x-z.x;v=0;} else if(a.wall==="S"){u=a.x-z.x;v=d;}
+    else if(a.wall==="E"){u=w;v=a.z-z.z;} else {u=0;v=a.z-z.z;}
+    u=Math.max(6,Math.min(w-6,u));v=Math.max(6,Math.min(d-6,v));
+    return {a,u,v,dir:inward[a.wall]};
+  });
+  if(!doorsLocal.length)doorsLocal.push({a:{short:"ACCESO",wall:"S"},u:w/2,v:d,dir:inward.S});
+  doorsLocal.forEach(dd=>{
+    const x=X(dd.u),y=Y(dd.v);
+    // hueco de puerta (verde)
+    const along=(dd.a.wall==="N"||dd.a.wall==="S")?[1,0]:[0,1];
+    line(x-along[0]*11,y-along[1]*11,x+along[0]*11,y+along[1]*11,"#39ff9e",4);
+    txt(x+dd.dir[0]*16,y+dd.dir[1]*16+(dd.dir[1]<0?-4:12),dd.a.short,"#8fffbf",9,"middle");
+    // contacto magnético en la puerta (violeta)
+    rect(x-3,y-3,6,6,"#b78cff",1.5,"rgba(183,140,255,.4)");
+  });
+
+  // dispositivos generados: cámaras junto a cada puerta, apuntando al interior
+  const inset=Math.min(w,d)*0.16;
+  const cams=[],pir=[];
+  doorsLocal.slice(0,4).forEach(dd=>{
+    const cu=dd.u+dd.dir[0]*inset, cv=dd.v+dd.dir[1]*inset;
+    cams.push({u:cu,v:cv,ang:Math.atan2(-dd.dir[1],-dd.dir[0])+Math.PI}); // mira hacia dentro
+  });
+  if(isCh){cams.push({u:w/2,v:d*0.12,ang:Math.PI/2});cams.push({u:w/2,v:d*0.6,ang:Math.PI/2});}
+  if(isCl){[[0.2,0.2],[0.8,0.2],[0.2,0.8],[0.8,0.8]].forEach(p=>cams.push({u:w*p[0],v:d*p[1],ang:Math.atan2(0.5-p[1],0.5-p[0])}));}
+  if(!cams.length){cams.push({u:w*0.5,v:d*0.28,ang:Math.PI/2});cams.push({u:w*0.5,v:d*0.72,ang:-Math.PI/2});}
+  // sensores de movimiento en esquinas
+  const corners=[[0.12,0.12],[0.88,0.12],[0.12,0.88],[0.88,0.88]];
+  (Math.min(w,d)<90?corners.slice(0,2):corners).forEach(p=>pir.push({u:w*p[0],v:d*p[1]}));
+  if(isCh)pir.push({u:w/2,v:d*0.4});
+  // cuadro eléctrico junto a una esquina
+  const panel={u:w*0.1,v:d*0.1};
+
+  // cableado desde el cuadro a cada dispositivo (naranja discontinuo)
+  const px=X(panel.u),py=Y(panel.v);
+  cams.concat(pir).forEach(dev=>line(px,py,X(dev.u),Y(dev.v),"#ff9a5a",1.3,"3 5"));
+
+  // dibujar cámaras (cono + punto)
+  cams.forEach(c=>{const x=X(c.u),y=Y(c.v);
+    wedge(x,y,c.ang,50*Math.PI/180,Math.min(w,d)*0.5*sc,"#ff4d6d");
+    circ(x,y,4,"#ff4d6d","#ff4d6d");});
+  // sensores de movimiento
+  pir.forEach(s=>tri(X(s.u),Y(s.v),6,"#ffb648"));
+  // cuadro eléctrico
+  rect(px-8,py-8,16,16,"#cdeef7",1.5,"rgba(205,238,247,.25)");txt(px,py+3,"CE","#cdeef7",8,"middle");
+
+  txt(X(w/2),Y(0)-30,z.label,col,15,"middle");
+  svg.innerHTML=P.join("");
+}
 
 /* ===================== THREE ===================== */
 let scene,camera,renderer,raycaster,mouse,pickZones=[],pickCams=[],pickAcc=[],markers=[],coneMap={};
