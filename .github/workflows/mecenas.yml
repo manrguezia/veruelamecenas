@@ -1,1 +1,17 @@
-
+name: Mecenas
+on:
+  schedule:
+    - cron: '0 * * * *'   # cada hora (UTC); el script filtra la franja de Madrid 09-24h
+  workflow_dispatch: {}    # permite ejecutarlo a mano para probar
+jobs:
+  mecenas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Ejecutar Mecenas
+        env:
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python mecenas.py
