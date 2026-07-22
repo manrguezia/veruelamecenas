@@ -393,9 +393,11 @@ const OPERATIVOS=[
  {id:"gm",name:"MÁSTER",role:"Control",pin:"penumbra",gm:true},
 ];
 
-/* PLANTA (x derecha, z abajo) siguiendo el plano de referencia:
-   iglesia horizontal arriba (ábside al E), claustro central con lavatorio,
-   sala capitular al E, ala sur (cocina/refectorio/cilla), portería al SE. */
+/* PLANTA (x derecha, z abajo) siguiendo el plano "Evolución del Monasterio de Veruela":
+   iglesia con cabecera/ábside al norte, claustro central con lavatorio, sala capitular
+   al este del claustro, ala sur (cocina/refectorio/cilla). Portería al NO, al final de
+   la avenida de entrada; ala de servicio del s.XVI y Palacio Abacial entre la portería
+   y la iglesia. Monasterio Nuevo (s.XVII, dos patios) adosado al ala este. */
 const ZONAS=[
  {id:"iglesia",label:"IGLESIA",kind:"church",objetivo:true,x:250,z:170,w:190,d:500,wallH:82,ridge:46,
    info:{desc:"Nave cisterciense de tres naves con pilares cruciformes y cabecera al norte con girola y cinco absidiolos. Rosetón y portada abocinada en la fachada sur. Zona objetivo."}},
@@ -415,10 +417,10 @@ const ZONAS=[
    info:{desc:"Cocina del ala sur, comunicada con el refectorio por su puerta más descuidada."}},
  {id:"cilla",label:"CILLA / ALMACÉN",kind:"hall",x:470,z:592,w:230,d:66,wallH:26,ridge:12,
    info:{desc:"Cilla o almacén, ala sur, junto a la Puerta de los Conversos."}},
- {id:"porteria",label:"PORTERÍA",kind:"hall",entrada:true,x:706,z:634,w:80,d:70,wallH:30,ridge:14,
-   info:{desc:"Portería del monasterio nuevo (acceso principal). Guardia fijo de día; el de noche descansa aquí entre rondas."}},
- {id:"nuevo",label:"MONASTERIO NUEVO",kind:"cloisternew",x:824,z:526,w:224,d:214,wallH:50,
-   info:{desc:"Gran claustro barroco del siglo XVII. No forma parte de las zonas objetivo, pero es paso y volumen imponente del recinto."}},
+ {id:"porteria",label:"PORTERÍA",kind:"hall",entrada:true,x:-260,z:160,w:70,d:60,wallH:26,ridge:12,
+   info:{desc:"Portería principal del recinto, al final de la avenida de acceso. Guardia fijo de día; el de noche descansa aquí entre rondas."}},
+ {id:"nuevo",label:"MONASTERIO NUEVO",kind:"cloisternew",x:900,z:150,w:260,d:280,wallH:54,
+   info:{desc:"Gran claustro barroco del siglo XVII, con dos patios interiores, adosado al ala este del monasterio viejo. No forma parte de las zonas objetivo, pero es paso y volumen imponente del recinto."}},
  {id:"sanbernardo",label:"CAPILLA SAN BERNARDO",kind:"hall",x:150,z:250,w:80,d:66,wallH:36,ridge:16,
    info:{desc:"Capilla de San Bernardo, adosada al costado oeste de la iglesia."}},
  {id:"difuntos",label:"SALA DE DIFUNTOS",kind:"hall",x:150,z:332,w:72,d:58,wallH:28,ridge:12,
@@ -428,7 +430,7 @@ const ZONAS=[
 /* ACCESOS (puertas) — x,z planta; wall: 'N'|'S'|'E'|'W' (muro y normal exterior).
    Sin datos de juego: solo identifican la puerta. */
 const ACCESOS=[
- {id:"a-porteria",x:746,z:704,wall:"S",short:"PORTERÍA",label:"Portería principal (acceso al monasterio nuevo)",zone:"porteria"},
+ {id:"a-porteria",x:-260,z:190,wall:"W",short:"PORTERÍA",label:"Portería principal (acceso al recinto, fin de la avenida)",zone:"porteria"},
  {id:"a-portada",x:345,z:670,wall:"S",short:"PORTADA IGLESIA",label:"Portada principal de la iglesia (fachada sur)",zone:"iglesia"},
  {id:"a-monjes",x:440,z:340,wall:"E",short:"ENTRADA MONJES",label:"Entrada de monjes: iglesia desde el claustro",zone:"iglesia"},
  {id:"a-conversos",x:440,z:600,wall:"E",short:"P. CONVERSOS",label:"Puerta de los Conversos, iglesia al ala sur",zone:"iglesia"},
@@ -437,12 +439,12 @@ const ACCESOS=[
  {id:"a-ref-cocina",x:748,z:508,wall:"S",short:"REF·COCINA",label:"Refectorio, acceso desde la cocina",zone:"refectorio"},
  {id:"a-cocina",x:700,z:565,wall:"W",short:"COCINA",label:"Cocina, acceso desde el ala sur",zone:"cocina"},
  {id:"a-cilla",x:560,z:592,wall:"N",short:"CILLA",label:"Cilla / almacén, acceso desde el claustro",zone:"cilla"},
- {id:"a-nuevo",x:824,z:634,wall:"W",short:"M. NUEVO",label:"Monasterio Nuevo, acceso desde el viejo",zone:"nuevo"},
+ {id:"a-nuevo",x:900,z:290,wall:"W",short:"M. NUEVO",label:"Monasterio Nuevo, acceso desde el viejo",zone:"nuevo"},
 ];
 
 /* CÁMARAS — x,z planta; yaw en planta (0=E, 90=S, 180=O, 270=N) apuntando a su objetivo */
 const CAMARAS=[
- {id:"c-porteria",x:746,z:722,yaw:90,range:150,label:"Portería",cubre:"Acceso principal y aproximación exterior."},
+ {id:"c-porteria",x:-275,z:190,yaw:0,range:130,label:"Portería",cubre:"Acceso principal y aproximación exterior por la avenida."},
  {id:"c-cl-no",x:486,z:336,yaw:45,range:120,label:"Claustro NO",cubre:"Galería noroeste y paso a la iglesia."},
  {id:"c-cl-ne",x:644,z:336,yaw:135,range:120,label:"Claustro NE",cubre:"Galería noreste y paso a la Sala Capitular."},
  {id:"c-cl-so",x:486,z:504,yaw:315,range:120,label:"Claustro SO",cubre:"Galería suroeste y paso al ala sur."},
@@ -620,7 +622,13 @@ function buildInterior(z){
   const col=z.objetivo?"#38e1ff":isCl?(z.kind==="cloisternew"?"#b78cff":"#59f2c0"):"#38e1ff";
   // muros exteriores
   rect(X(0),Y(0),w*sc,d*sc,col,2.5,"rgba(56,225,255,.04)");
-  if(isCl){const iw=w*0.6,id=d*0.6;rect(X((w-iw)/2),Y((d-id)/2),iw*sc,id*sc,"#59f2c0",1.6);
+  if(isCl&&z.kind==="cloisternew"){
+    const cd=d*0.8,gap=w*0.05,cw=(w*0.8-gap)/2,cx0=(w-(cw*2+gap))/2,cz0=(d-cd)/2;
+    [cx0,cx0+cw+gap].forEach((cx,i)=>{
+      rect(X(cx),Y(cz0),cw*sc,cd*sc,"#59f2c0",1.6);
+      txt(X(cx+cw/2),Y(cz0+cd/2),"PATIO "+(i+1),col,11,"middle");
+    });
+  } else if(isCl){const iw=w*0.6,id=d*0.6;rect(X((w-iw)/2),Y((d-id)/2),iw*sc,id*sc,"#59f2c0",1.6);
     txt(X(w/2),Y(d/2),"PATIO",col,12,"middle");}
   if(isCh){ // ábside al norte + rosetón al sur
     const cx=X(w/2);
@@ -801,16 +809,29 @@ function buildZone(z){
   rectGround(z.x,z.z,z.w,z.d,col);
   if(z.kind==="cloister"||z.kind==="cloisternew"){
     boxWalls(z.x,z.z,z.w,z.d,z.wallH,col,.03);
-    const ir=z.kind==="cloisternew"?0.62:0.6;
-    const iw=z.w*ir,id=z.d*ir,ix=z.x+(z.w-iw)/2,iz=z.z+(z.d-id)/2;
-    rectGround(ix,iz,iw,id,z.kind==="cloisternew"?0x6a4fb0:0x1f6f7a,.6);
-    const ca=Math.max(6,Math.round(iw/26)),cb=Math.max(6,Math.round(id/26));
-    arcade(ix,iz,ix+iw,iz,2,ca,z.wallH*0.72,4,col);
-    arcade(ix,iz+id,ix+iw,iz+id,2,ca,z.wallH*0.72,4,col);
-    arcade(ix,iz,ix,iz+id,2,cb,z.wallH*0.72,4,col);
-    arcade(ix+iw,iz,ix+iw,iz+id,2,cb,z.wallH*0.72,4,col);
-    [[ix,iz],[ix+iw,iz],[ix,iz+id],[ix+iw,iz+id]].forEach(p=>pillar(p[0],p[1],col));
-    if(z.kind==="cloister"){
+    if(z.kind==="cloisternew"){
+      // dos patios interiores, lado a lado (claustro barroco de doble crujía)
+      const gap=z.w*0.05,cd=z.d*0.8,cz0=z.z+(z.d-cd)/2;
+      const cw=(z.w*0.8-gap)/2,cx0=z.x+(z.w-(cw*2+gap))/2;
+      [cx0,cx0+cw+gap].forEach(ix=>{
+        const iz=cz0;
+        rectGround(ix,iz,cw,cd,0x6a4fb0,.6);
+        const ca=Math.max(4,Math.round(cw/22)),cb=Math.max(4,Math.round(cd/22));
+        arcade(ix,iz,ix+cw,iz,2,ca,z.wallH*0.72,4,col);
+        arcade(ix,iz+cd,ix+cw,iz+cd,2,ca,z.wallH*0.72,4,col);
+        arcade(ix,iz,ix,iz+cd,2,cb,z.wallH*0.72,4,col);
+        arcade(ix+cw,iz,ix+cw,iz+cd,2,cb,z.wallH*0.72,4,col);
+        [[ix,iz],[ix+cw,iz],[ix,iz+cd],[ix+cw,iz+cd]].forEach(p=>pillar(p[0],p[1],col));
+      });
+    } else {
+      const iw=z.w*0.6,id=z.d*0.6,ix=z.x+(z.w-iw)/2,iz=z.z+(z.d-id)/2;
+      rectGround(ix,iz,iw,id,0x1f6f7a,.6);
+      const ca=Math.max(6,Math.round(iw/26)),cb=Math.max(6,Math.round(id/26));
+      arcade(ix,iz,ix+iw,iz,2,ca,z.wallH*0.72,4,col);
+      arcade(ix,iz+id,ix+iw,iz+id,2,ca,z.wallH*0.72,4,col);
+      arcade(ix,iz,ix,iz+id,2,cb,z.wallH*0.72,4,col);
+      arcade(ix+iw,iz,ix+iw,iz+id,2,cb,z.wallH*0.72,4,col);
+      [[ix,iz],[ix+iw,iz],[ix,iz+id],[ix+iw,iz+id]].forEach(p=>pillar(p[0],p[1],col));
       const lx=z.x+z.w*0.7,lz=z.z+z.d*0.5;
       const hg=new THREE.CylinderGeometry(9,9,z.wallH*1.05,6);
       const he=new THREE.LineSegments(new THREE.EdgesGeometry(hg),wire(COL.hub,.85));
@@ -953,13 +974,20 @@ function buildAnexos(){
   enclosure(WALL,30,AMBER2);
   WALL.forEach((p,i)=>{const gate=(i===0);towerAt(p[0],p[1],gate?16:11,gate?60:32,gate?AMBER:AMBER2);});
   labelAt(-320,66,64,"PUERTA TORRE DEL HOMENAJE",AMBER);
-  // avenida arbolada desde la puerta hacia el palacio abacial y la iglesia
-  avenue(-300,86, 40,270);
-  // anexos (ámbar) al oeste / suroeste del monasterio viejo
-  amberBuilding(30,250,150,120,44,20,"PALACIO ABACIAL");
-  amberBuilding(-40,400,44,56,20,0,"ALJIBE");
-  amberBuilding(-10,520,52,44,26,12,"MOLINO");
+  // avenida arbolada desde la puerta hasta la portería, y corredor del s.XVI hasta el palacio abacial
+  avenue(-300,86, -260,190);
+  avenue(-190,195, 60,205);
+  // anexos (ámbar) al oeste / noroeste del monasterio viejo, siguiendo el plano de evolución del recinto
+  amberBuilding(-220,90,40,50,22,0,"ALJIBE");
+  amberBuilding(-190,150,140,90,26,10,"ALA S.XVI");
+  rectGround(-140,180,40,30,AMBER2,.5);
+  amberBuilding(-50,140,160,130,40,18,"PALACIO ABACIAL");
+  amberBuilding(-260,250,50,42,24,10,"MOLINO");
+  canal(-340,340,-235,271);
   amberBuilding(-300,470,42,58,30,14,"CAPILLA DE LA APARICIÓN");
+}
+function canal(x0,z0,x1,z1){
+  ADD(new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(x0,z0,.5),V(x1,z1,.5)]),wire(0x38a1ff,.5)));
 }
 function enclosure(pts,h,color){
   const bottom=pts.map(p=>V(p[0],p[1],.6));bottom.push(bottom[0].clone());
