@@ -417,10 +417,10 @@ const ZONAS=[
    info:{desc:"Cocina del ala sur, comunicada con el refectorio por su puerta más descuidada."}},
  {id:"cilla",label:"CILLA / ALMACÉN",kind:"hall",x:470,z:592,w:230,d:66,wallH:26,ridge:12,
    info:{desc:"Cilla o almacén, ala sur, junto a la Puerta de los Conversos."}},
- {id:"porteria",label:"PORTERÍA",kind:"hall",entrada:true,x:-300,z:470,w:74,d:56,wallH:26,ridge:12,
+ {id:"porteria",label:"PORTERÍA",kind:"hall",entrada:true,x:-260,z:160,w:74,d:56,wallH:26,ridge:12,
    info:{desc:"Portería principal del recinto, junto a la puerta de la muralla (oeste) y al arranque de la avenida de acceso. Guardia fijo de día; el de noche descansa aquí entre rondas."}},
- {id:"nuevo",label:"MONASTERIO NUEVO",kind:"cloisternew",x:870,z:160,w:280,d:260,wallH:54,
-   info:{desc:"Gran claustro barroco del siglo XVII, con dos patios interiores, adosado al ala este del monasterio viejo (colinda con el scriptorium y la sala capitular). No forma parte de las zonas objetivo, pero es paso y volumen imponente del recinto."}},
+ {id:"nuevo",label:"MONASTERIO NUEVO",kind:"cloisternew",x:800,z:90,w:360,d:640,wallH:54,
+   info:{desc:"Gran claustro barroco del siglo XVII, con dos patios interiores, adosado al flanco este del monasterio viejo: colinda con el scriptorium y la sala capitular y queda pegado al ábside de la iglesia. No forma parte de las zonas objetivo, pero es paso y volumen imponente del recinto."}},
  {id:"sanbernardo",label:"CAPILLA SAN BERNARDO",kind:"hall",x:150,z:250,w:80,d:66,wallH:36,ridge:16,
    info:{desc:"Capilla de San Bernardo, adosada al costado oeste de la iglesia."}},
  {id:"difuntos",label:"SALA DE DIFUNTOS",kind:"hall",x:150,z:332,w:72,d:58,wallH:28,ridge:12,
@@ -430,7 +430,7 @@ const ZONAS=[
 /* ACCESOS (puertas) — x,z planta; wall: 'N'|'S'|'E'|'W' (muro y normal exterior).
    Sin datos de juego: solo identifican la puerta. */
 const ACCESOS=[
- {id:"a-porteria",x:-226,z:498,wall:"E",short:"PORTERÍA",label:"Portería principal (acceso al recinto, junto a la puerta de la muralla)",zone:"porteria"},
+ {id:"a-porteria",x:-186,z:188,wall:"E",short:"PORTERÍA",label:"Portería principal (acceso al recinto, junto a la puerta de la muralla)",zone:"porteria"},
  {id:"a-portada",x:345,z:670,wall:"S",short:"PORTADA IGLESIA",label:"Portada principal de la iglesia (fachada sur)",zone:"iglesia"},
  {id:"a-monjes",x:440,z:340,wall:"E",short:"ENTRADA MONJES",label:"Entrada de monjes: iglesia desde el claustro",zone:"iglesia"},
  {id:"a-conversos",x:440,z:600,wall:"E",short:"P. CONVERSOS",label:"Puerta de los Conversos, iglesia al ala sur",zone:"iglesia"},
@@ -439,12 +439,12 @@ const ACCESOS=[
  {id:"a-ref-cocina",x:748,z:508,wall:"S",short:"REF·COCINA",label:"Refectorio, acceso desde la cocina",zone:"refectorio"},
  {id:"a-cocina",x:700,z:565,wall:"W",short:"COCINA",label:"Cocina, acceso desde el ala sur",zone:"cocina"},
  {id:"a-cilla",x:560,z:592,wall:"N",short:"CILLA",label:"Cilla / almacén, acceso desde el claustro",zone:"cilla"},
- {id:"a-nuevo",x:870,z:250,wall:"W",short:"M. NUEVO",label:"Monasterio Nuevo, acceso desde el viejo (junto al scriptorium)",zone:"nuevo"},
+ {id:"a-nuevo",x:800,z:360,wall:"W",short:"M. NUEVO",label:"Monasterio Nuevo, acceso desde el viejo (junto al scriptorium)",zone:"nuevo"},
 ];
 
 /* CÁMARAS — x,z planta; yaw en planta (0=E, 90=S, 180=O, 270=N) apuntando a su objetivo */
 const CAMARAS=[
- {id:"c-porteria",x:-292,z:498,yaw:180,range:160,label:"Portería",cubre:"Acceso principal y aproximación exterior por la avenida."},
+ {id:"c-porteria",x:-252,z:188,yaw:180,range:170,label:"Portería",cubre:"Acceso principal y aproximación exterior por la avenida."},
  {id:"c-cl-no",x:486,z:336,yaw:45,range:120,label:"Claustro NO",cubre:"Galería noroeste y paso a la iglesia."},
  {id:"c-cl-ne",x:644,z:336,yaw:135,range:120,label:"Claustro NE",cubre:"Galería noreste y paso a la Sala Capitular."},
  {id:"c-cl-so",x:486,z:504,yaw:315,range:120,label:"Claustro SO",cubre:"Galería suroeste y paso al ala sur."},
@@ -694,7 +694,7 @@ function buildInterior(z){
 /* ===================== THREE ===================== */
 let scene,camera,renderer,raycaster,mouse,pickZones=[],pickCams=[],pickAcc=[],markers=[],coneMap={};
 let camState={az:-0.85,pol:0.95,rad:1050,tx:0,tz:0};let inited=false;
-let coreGroup,anexGroup,G=null,anexMats=[];
+let coreGroup,anexGroup,oldGroup,G=null,anexMats=[];
 function ADD(o){(G||scene).add(o);return o;}
 function collectAnex(){anexGroup.traverse(o=>{if(o.material&&!o.userData._done){o.userData._done=1;
   anexMats.push({m:o.material,op0:o.material.opacity});}});}
@@ -718,13 +718,26 @@ function initThree(){
   const grid=new THREE.GridHelper(3200,64,0x0d3b47,0x0a2530);scene.add(grid);
   const base=new THREE.Mesh(new THREE.PlaneGeometry(3200,3200),face(0x04141b,.35));
   base.rotation.x=-Math.PI/2;base.position.y=-.4;scene.add(base);
-  coreGroup=new THREE.Group();anexGroup=new THREE.Group();scene.add(coreGroup);scene.add(anexGroup);
-  G=coreGroup;
-  ZONAS.forEach(buildZone);
-  buildApse(ZONAS[0]); buildTower();
-  ACCESOS.forEach(buildDoor); CAMARAS.forEach(buildCamera);
+  coreGroup=new THREE.Group();anexGroup=new THREE.Group();oldGroup=new THREE.Group();
+  scene.add(coreGroup);scene.add(anexGroup);scene.add(oldGroup);
+  // Bloque central "antiguo": se construye aparte para poder girarlo 90° en bloque.
+  const OLD=new Set(["iglesia","claustro","capitular","sacristia","estewing","abacial","refectorio","cocina","cilla","sanbernardo","difuntos"]);
+  ZONAS.forEach(z=>{ G=OLD.has(z.id)?oldGroup:coreGroup; buildZone(z); });
+  G=oldGroup; buildApse(ZONAS[0]); buildTower();
+  ACCESOS.forEach(a=>{ G=OLD.has(a.zone)?oldGroup:coreGroup; buildDoor(a); });
+  CAMARAS.forEach(c=>{ G=(c.id==="c-porteria")?coreGroup:oldGroup; buildCamera(c); });
   G=anexGroup; buildAnexos(); collectAnex(); G=null;
+  rotateOld();
   addEvents();animate();onResize();
+}
+
+/* Gira el bloque central 90° en sentido horario alrededor de su centro (planta 565,410).
+   Así la iglesia (ábside antes al norte) pasa a mirar al este, con su geometría intacta. */
+function rotateOld(){
+  const a=-Math.PI/2;               // -90° = giro horario visto desde arriba
+  const Cx=NX(565), Cz=NZ(410);     // centro del bloque en coordenadas de mundo
+  oldGroup.rotation.y=a;
+  oldGroup.position.set(Cx+Cz, 0, Cz-Cx);   // pivota alrededor de C (válido para a=-90°)
 }
 
 /* ---- ground plan (holográfico) ---- */
@@ -971,20 +984,20 @@ const AMBER=0xffb060, AMBER2=0xe8933a;
 function buildAnexos(){
   // muralla poligonal con torres, envolviendo todo el recinto con holgura.
   // Vértice 0 = puerta / Torre del Homenaje, al oeste, en la boca de la avenida de acceso.
-  const WALL=[[-440,460],[-320,120],[300,-40],[1020,10],[1380,300],[1320,720],[860,900],[180,940],[-380,820]];
+  const WALL=[[-520,240],[-360,-160],[400,-260],[1160,-120],[1420,360],[1320,820],[640,1000],[-120,940],[-520,620]];
   enclosure(WALL,34,AMBER2);
   WALL.forEach((p,i)=>{const gate=(i===0);towerAt(p[0],p[1],gate?16:11,gate?62:34,gate?AMBER:AMBER2);});
-  labelAt(-470,472,66,"PUERTA · TORRE DEL HOMENAJE",AMBER);
-  // avenida de acceso: de la puerta oeste, junto a la portería, cruza en diagonal hasta la portada del monasterio
-  avenue(-420,432, -300,472);
-  avenue(-260,485, 345,672);
-  // anexos (ámbar) AL SUR de la avenida: la flanquean por su lado sur, como en el plano de evolución
-  amberBuilding(-120,560,150,105,40,18,"PALACIO ABACIAL");
-  amberBuilding(40,600,150,60,26,10,"ALA S.XVI");
-  amberBuilding(-180,540,44,56,22,0,"ALJIBE");
-  amberBuilding(-300,640,52,44,24,10,"MOLINO");
-  amberBuilding(-360,560,42,58,30,14,"CAPILLA DE LA APARICIÓN");
-  canal(-274,662, -120,566);
+  labelAt(-540,252,66,"PUERTA · TORRE DEL HOMENAJE",AMBER);
+  // avenida de acceso: de la puerta oeste, junto a la portería, hasta la fachada (oeste) de la iglesia ya girada
+  avenue(-480,222, -260,190);
+  avenue(-186,190, 300,190);
+  // anexos (ámbar) flanqueando la avenida por el oeste del monasterio (según el plano de evolución)
+  amberBuilding(-120,280,150,105,40,18,"PALACIO ABACIAL");
+  amberBuilding(40,250,150,55,26,10,"ALA S.XVI");
+  amberBuilding(-180,60,44,56,22,0,"ALJIBE");
+  amberBuilding(-330,320,52,44,24,10,"MOLINO");
+  amberBuilding(-380,240,42,58,30,14,"CAPILLA DE LA APARICIÓN");
+  canal(-304,342, -180,272);
 }
 function canal(x0,z0,x1,z1){
   ADD(new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(x0,z0,.5),V(x1,z1,.5)]),wire(0x38a1ff,.5)));
