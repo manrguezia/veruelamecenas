@@ -249,6 +249,22 @@
   .srow .k{font-size:12px;color:#bfe9f4}.srow .v{font-size:14px;color:var(--cyan)}
   .srow.dim{opacity:.72}.srow.dim .k{color:#8fb6c4}.srow.dim .v{color:#7fbdd0}
 
+  /* Investigación */
+  #view-invest{overflow:auto;padding:0}
+  .investwrap{max-width:820px;margin:0 auto;padding:22px 20px 40px}
+  .investhead h2{margin:0 0 4px;font-size:16px;letter-spacing:.14em;color:var(--cyan)}
+  .investhead p{margin:0 0 18px;font-size:12px;color:var(--dim)}
+  #investlog{display:flex;flex-direction:column;gap:10px}
+  .icard{border:1px solid rgba(56,225,255,.18);border-radius:8px;padding:10px 12px;background:rgba(10,26,34,.5)}
+  .icard.info{border-color:rgba(56,225,255,.30)}
+  .icard.roll{border-color:rgba(255,180,90,.30);background:rgba(30,22,10,.4)}
+  .icard .ih{font-size:12px;letter-spacing:.06em;color:#8fd4e6;margin-bottom:3px}
+  .icard.info .ih{color:var(--cyan);font-weight:700}
+  .icard .it{font-size:13px;color:#d7eef5;line-height:1.45}
+  .icard .itime{font-size:10px;color:var(--dim);margin-top:5px}
+  .icard .res{font-weight:700}
+  .imempty{color:var(--dim);font-size:13px;padding:16px;text-align:center}
+
   @media(max-width:820px){
     header{flex-wrap:wrap;gap:8px} .who{order:5;width:100%;margin:0}
     .legend{top:auto;bottom:56px;right:10px}
@@ -299,6 +315,7 @@
     <div class="tabs">
       <button class="tab active" data-view="mon">MONASTERIO 3D</button>
       <button class="tab" data-view="zona">MAPA DE ZONA</button>
+      <button class="tab" data-view="invest">INVESTIGACIÓN</button>
     </div>
     <button class="hbtn" id="openSheet">▤ MI HOJA</button>
     <button class="hbtn" id="toggleChat">▣ CHAT</button>
@@ -324,6 +341,15 @@
     </section>
     <section class="view hidden" id="view-zona">
       <div id="zmap"></div>
+    </section>
+    <section class="view hidden" id="view-invest">
+      <div class="investwrap">
+        <div class="investhead">
+          <h2>REGISTRO DE INVESTIGACIÓN</h2>
+          <p>Información que el Mecenas va revelando en el canal general y tiradas asociadas. Se actualiza solo.</p>
+        </div>
+        <div id="investlog"></div>
+      </div>
     </section>
 
   </main>
@@ -532,9 +558,10 @@ document.querySelectorAll(".tab").forEach(t=>{
   t.addEventListener("click",()=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
     t.classList.add("active");const v=t.dataset.view;
-    ["mon","zona"].forEach(k=>$("#view-"+k).classList.toggle("hidden",k!==v));
+    ["mon","zona","invest"].forEach(k=>$("#view-"+k).classList.toggle("hidden",k!==v));
     if(v==="mon"&&renderer)onResize();
     if(v==="zona")setTimeout(initMap,40);
+    if(v==="invest")renderInvest();
   });
 });
 /* botón MI HOJA (ventana flotante) */
@@ -1281,6 +1308,23 @@ function chatRender(){
   log.scrollTop=log.scrollHeight;
   lastSeen[curChan]=Date.now();
   buildChanBar();
+  renderInvest();
+}
+/* Registro de investigación: info revelada por el Mecenas en general + tiradas, en orden. */
+function renderInvest(){
+  const el=$("#investlog");if(!el)return;
+  const items=chatCache.filter(m=>(m.ch||"general")==="general" &&
+    ((m.who==="Mecenas"&&m.t!=="roll") || m.t==="roll")).sort((a,b)=>a.ts-b.ts);
+  if(!items.length){el.innerHTML=`<div class="imempty">— aún no hay información registrada —</div>`;return;}
+  el.innerHTML=items.map(m=>{
+    const t=new Date(m.ts).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+    if(m.t==="roll"){
+      return `<div class="icard roll"><div class="ih">🎲 ${esc(m.who)} · ${esc(m.label)} <b>${m.val}%</b> → ${m.roll} ·
+        <span class="res ${m.cls}">${m.lvl}</span></div><div class="itime">${t}</div></div>`;
+    }
+    return `<div class="icard info"><div class="ih">▸ MECENAS</div>
+      <div class="it">${esc(m.msg)}</div><div class="itime">${t}</div></div>`;
+  }).join("");
 }
 </script>
 </body>
