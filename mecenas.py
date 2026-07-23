@@ -13,6 +13,7 @@ DB   = os.environ["FIREBASE_DB_URL"].rstrip("/")
 KEY  = os.environ["GROQ_API_KEY"].strip()
 MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
 PATH = "/veruela_chat"
+INVEST_PATH = "/veruela_investigacion"   # síntesis que mantiene el Mecenas
 RECENT_MS = 3 * 3600 * 1000     # solo responder a mensajes de las últimas 3 h
 
 SYS = """Eres «el Mecenas» (a veces firmas «— M.»), el intermediario que ha encargado a un grupo el robo de una pieza de un monasterio de la zona del Moncayo. Te comunicas con ellos SOLO por este chat cifrado.
@@ -90,8 +91,14 @@ def http_post(url, obj):
     with urllib.request.urlopen(req, timeout=25) as r:
         return r.read()
 
-def groq(messages):
-    body = json.dumps({"model":MODEL,"temperature":0.7,"max_tokens":180,"messages":messages}).encode()
+def http_put(url, obj):
+    data = json.dumps(obj).encode()
+    req = urllib.request.Request(url, data=data, headers={"Content-Type":"application/json"}, method="PUT")
+    with urllib.request.urlopen(req, timeout=25) as r:
+        return r.read()
+
+def groq(messages, max_tokens=180, temperature=0.7):
+    body = json.dumps({"model":MODEL,"temperature":temperature,"max_tokens":max_tokens,"messages":messages}).encode()
     req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions",
         data=body, headers={"Authorization":"Bearer "+KEY,"Content-Type":"application/json",
                  "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36"}, method="POST")
@@ -158,6 +165,45 @@ def main():
         http_post(f"{DB}{PATH}.json",
             {"t":"text","who":"Mecenas","gm":False,"msg":reply.strip(),"ch":ch,"ts":int(time.time()*1000)})
         print("Publicado en", ch, "->", reply.strip()[:80])
+
+    actualizar_investigacion()
+
+def actualizar_investigacion():
+    """Regenera la síntesis de investigación con lo que el Mecenas ha revelado en GENERAL.
+    Respeta el marcador 'since': el Máster puede vaciarla poniendo since=ahora (desde la web)."""
+    try:
+        prev = http_get(f"{DB}{INVEST_PATH}.json")
+    except Exception:
+        prev = None
+    prev = prev if isinstance(prev, dict) else {}
+    since   = prev.get("since", 0)
+    prev_ts = prev.get("ts", 0)
+
+    data = http_get(f"{DB}{PATH}.json") or {}
+    reveals = [m for m in data.values()
+               if m.get("ch", "general") == "general" and m.get("who") == "Mecenas"
+               and m.get("t") == "text" and m.get("ts", 0) >= since]
+    reveals.sort(key=lambda m: m.get("ts", 0))
+    if not reveals:
+        return  # nada que resumir (p. ej. recién vaciado): se deja la síntesis vacía
+    newest = reveals[-1].get("ts", 0)
+    if newest <= prev_ts and prev.get("text"):
+        return  # sin novedades desde la última síntesis
+
+    joined = "\n".join(f"- {m.get('msg','')}" for m in reveals[-40:])
+    sys = ("Eres el archivador del equipo. A partir de los mensajes que el Mecenas ha enviado al grupo, "
+           "redacta una SÍNTESIS en viñetas concisas con la información útil y accionable revelada "
+           "(seguridad, accesos, cámaras, personal, rutinas, piezas y condiciones del encargo). "
+           "Una viñeta por dato, sin relleno, sin repetir y SIN inventar nada que no esté en los mensajes. "
+           "Máximo 12 viñetas. Devuelve solo las viñetas, cada una empezando por '- '.")
+    try:
+        summary = groq([{"role":"system","content":sys},{"role":"user","content":joined}],
+                       max_tokens=360, temperature=0.3)
+    except Exception as e:
+        print("Error al sintetizar investigación:", e); return
+    http_put(f"{DB}{INVEST_PATH}.json",
+             {"text": summary.strip(), "since": since, "ts": int(time.time()*1000)})
+    print("Síntesis de investigación actualizada.")
 
 if __name__ == "__main__":
     main()
