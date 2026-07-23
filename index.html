@@ -417,10 +417,10 @@ const ZONAS=[
    info:{desc:"Cocina del ala sur, comunicada con el refectorio por su puerta más descuidada."}},
  {id:"cilla",label:"CILLA / ALMACÉN",kind:"hall",x:470,z:592,w:230,d:66,wallH:26,ridge:12,
    info:{desc:"Cilla o almacén, ala sur, junto a la Puerta de los Conversos."}},
- {id:"porteria",label:"PORTERÍA",kind:"hall",entrada:true,x:-260,z:160,w:74,d:56,wallH:26,ridge:12,
-   info:{desc:"Portería principal del recinto, junto a la puerta de la muralla (oeste) y al arranque de la avenida de acceso. Guardia fijo de día; el de noche descansa aquí entre rondas."}},
- {id:"nuevo",label:"MONASTERIO NUEVO",kind:"cloisternew",x:800,z:90,w:360,d:640,wallH:54,
-   info:{desc:"Gran claustro barroco del siglo XVII, con dos patios interiores, adosado al flanco este del monasterio viejo: colinda con el scriptorium y la sala capitular y queda pegado al ábside de la iglesia. No forma parte de las zonas objetivo, pero es paso y volumen imponente del recinto."}},
+ {id:"porteria",label:"PORTERÍA",kind:"hall",entrada:true,x:-600,z:205,w:80,d:70,wallH:30,ridge:14,
+   info:{desc:"Portería-puerta del recinto, integrada en la muralla como un saliente defensivo por el que entra la avenida (oeste). Guardia fijo de día; el de noche descansa aquí entre rondas."}},
+ {id:"nuevo",label:"MONASTERIO NUEVO",kind:"cloisternew",x:900,z:150,w:320,d:560,wallH:54,
+   info:{desc:"Gran claustro barroco del siglo XVII, con dos patios interiores, adosado al flanco este del monasterio viejo: queda pegado al ábside de la iglesia y junto a la sala capitular y el scriptorium. No forma parte de las zonas objetivo, pero es paso y volumen imponente del recinto."}},
  {id:"sanbernardo",label:"CAPILLA SAN BERNARDO",kind:"hall",x:150,z:250,w:80,d:66,wallH:36,ridge:16,
    info:{desc:"Capilla de San Bernardo, adosada al costado oeste de la iglesia."}},
  {id:"difuntos",label:"SALA DE DIFUNTOS",kind:"hall",x:150,z:332,w:72,d:58,wallH:28,ridge:12,
@@ -430,7 +430,7 @@ const ZONAS=[
 /* ACCESOS (puertas) — x,z planta; wall: 'N'|'S'|'E'|'W' (muro y normal exterior).
    Sin datos de juego: solo identifican la puerta. */
 const ACCESOS=[
- {id:"a-porteria",x:-186,z:188,wall:"E",short:"PORTERÍA",label:"Portería principal (acceso al recinto, junto a la puerta de la muralla)",zone:"porteria"},
+ {id:"a-porteria",x:-520,z:240,wall:"E",short:"PORTERÍA",label:"Portería-puerta del recinto (saliente de la muralla)",zone:"porteria"},
  {id:"a-portada",x:345,z:670,wall:"S",short:"PORTADA IGLESIA",label:"Portada principal de la iglesia (fachada sur)",zone:"iglesia"},
  {id:"a-monjes",x:440,z:340,wall:"E",short:"ENTRADA MONJES",label:"Entrada de monjes: iglesia desde el claustro",zone:"iglesia"},
  {id:"a-conversos",x:440,z:600,wall:"E",short:"P. CONVERSOS",label:"Puerta de los Conversos, iglesia al ala sur",zone:"iglesia"},
@@ -444,7 +444,7 @@ const ACCESOS=[
 
 /* CÁMARAS — x,z planta; yaw en planta (0=E, 90=S, 180=O, 270=N) apuntando a su objetivo */
 const CAMARAS=[
- {id:"c-porteria",x:-252,z:188,yaw:180,range:170,label:"Portería",cubre:"Acceso principal y aproximación exterior por la avenida."},
+ {id:"c-porteria",x:-560,z:240,yaw:180,range:170,label:"Portería",cubre:"Puerta de la muralla y aproximación exterior por la avenida."},
  {id:"c-cl-no",x:486,z:336,yaw:45,range:120,label:"Claustro NO",cubre:"Galería noroeste y paso a la iglesia."},
  {id:"c-cl-ne",x:644,z:336,yaw:135,range:120,label:"Claustro NE",cubre:"Galería noreste y paso a la Sala Capitular."},
  {id:"c-cl-so",x:486,z:504,yaw:315,range:120,label:"Claustro SO",cubre:"Galería suroeste y paso al ala sur."},
@@ -984,13 +984,14 @@ const AMBER=0xffb060, AMBER2=0xe8933a;
 function buildAnexos(){
   // muralla poligonal con torres, envolviendo todo el recinto con holgura.
   // Vértice 0 = puerta / Torre del Homenaje, al oeste, en la boca de la avenida de acceso.
-  const WALL=[[-520,240],[-360,-160],[400,-260],[1160,-120],[1420,360],[1320,820],[640,1000],[-120,940],[-520,620]];
+  // muralla con un saliente defensivo al oeste (vértices 0-1 y 10): ahí se integra la portería-puerta.
+  const WALL=[[-640,240],[-520,180],[-360,-160],[400,-260],[1160,-120],[1420,360],[1320,820],[640,1000],[-120,940],[-520,620],[-520,300]];
   enclosure(WALL,34,AMBER2);
-  WALL.forEach((p,i)=>{const gate=(i===0);towerAt(p[0],p[1],gate?16:11,gate?62:34,gate?AMBER:AMBER2);});
-  labelAt(-540,252,66,"PUERTA · TORRE DEL HOMENAJE",AMBER);
-  // avenida de acceso: de la puerta oeste, junto a la portería, hasta la fachada (oeste) de la iglesia ya girada
-  avenue(-480,222, -260,190);
-  avenue(-186,190, 300,190);
+  WALL.forEach((p,i)=>{const gate=(i===0);towerAt(p[0],p[1],gate?15:11,gate?58:34,gate?AMBER:AMBER2);});
+  labelAt(-660,252,66,"PORTERÍA · PUERTA",AMBER);
+  // avenida de acceso: entra por el saliente de la portería y llega a la fachada (oeste) de la iglesia ya girada
+  avenue(-516,240, -260,205);
+  avenue(-186,200, 300,190);
   // anexos (ámbar) flanqueando la avenida por el oeste del monasterio (según el plano de evolución)
   amberBuilding(-120,280,150,105,40,18,"PALACIO ABACIAL");
   amberBuilding(40,250,150,55,26,10,"ALA S.XVI");
