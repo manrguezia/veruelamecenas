@@ -1253,15 +1253,12 @@ function buildChanBar(){
 function chatWipe(){
   if(!CURRENT||!CURRENT.gm)return;
   if(!confirm("¿Vaciar TODO el chat (general y privados)? Esta acción no se puede deshacer."))return;
-  const now=Date.now(),iobj={text:"",since:now,ts:now};
   if(FIREBASE_DB_URL){
     fetch(FIREBASE_DB_URL+CHAT_PATH+".json",{method:"DELETE"}).then(()=>{
       chatCache=[];lastSeen={};chatRender();}).catch(()=>{});
-    fetch(FIREBASE_DB_URL+INVEST_PATH+".json",{method:"PUT",body:JSON.stringify(iobj)})
-      .then(()=>{investData=iobj;renderInvest();}).catch(()=>{});
   }else{
-    try{localStorage.removeItem("veruela_chat");localStorage.setItem("veruela_invest",JSON.stringify(iobj));}catch(e){}
-    chatCache=[];lastSeen={};investData=iobj;chatRender();
+    try{localStorage.removeItem("veruela_chat");}catch(e){}
+    chatCache=[];lastSeen={};chatRender();
   }
 }
 function setChannel(id){curChan=id;buildChanBar();chatRender();
