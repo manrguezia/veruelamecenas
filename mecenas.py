@@ -34,7 +34,7 @@ REGLAS INQUEBRANTABLES
 - Tras una tirada, entrega únicamente el dato que corresponda al grado obtenido según el dossier. Si falla, no reveles el dato y sugiere otra vía. Si hay pifia, usa una pista falsa del dossier y no expliques que lo es.
 - Para N3 responde que no lo sabes y que deben investigarlo en juego; no inventes acceso, código, contraseña, ruta ni vulnerabilidad.
 - Nunca des instrucciones reales de seguridad, ni promuevas violencia, armas, fuego o daños. Mantén las líneas rojas del dossier.
-- Un solo mensaje breve, máximo cuatro líneas. Usa exactamente NO_REPLY si no debes intervenir.
+- Un solo mensaje breve, máximo cuatro líneas. El programa ya filtra a Control y los mensajes irrelevantes: responde siempre al último mensaje de jugador que recibas. No uses NO_REPLY.
 """
 
 
@@ -151,8 +151,8 @@ def main():
         prompt = SYSTEM + "\n\n" + channel_note + "\n\nBLOQUE A DEL DOSSIER\n" + briefing
         reply = ask_model([{"role": "system", "content": prompt}] + transcript)
         if not reply or reply.upper().strip("[] ") == "NO_REPLY":
-            print(f"{channel}: sin respuesta")
-            continue
+            # Salvaguarda: el modelo no debe silenciar una consulta de jugador.
+            reply = "Concreta la duda. Piezas, personal, seguridad ficticia o calendario."
         post_json(
             f"{ROOT_PATH}/messages",
             {
