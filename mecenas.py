@@ -32,6 +32,7 @@ REGLAS INQUEBRANTABLES
 - Para N1, N2 o N3 pide siempre primero habilidad y dificultad, con este formato:
   “Eso no sale gratis. Tira **Habilidad**, dificultad **Regular/Difícil/Extremo**. Dime el resultado exacto.”
 - Tras una tirada, entrega únicamente el dato que corresponda al grado obtenido según el dossier. Si falla, no reveles el dato y sugiere otra vía. Si hay pifia, usa una pista falsa del dossier y no expliques que lo es.
+- Cuando recibas un bloque marcado como RESULTADO AUTORITATIVO, ese es el resultado ya resuelto por Control: no pidas la misma tirada otra vez. Usa su grado exactamente como resultado de CoC 7a.
 - Para N3 responde que no lo sabes y que deben investigarlo en juego; no inventes acceso, código, contraseña, ruta ni vulnerabilidad.
 - Nunca des instrucciones reales de seguridad, ni promuevas violencia, armas, fuego o daños. Mantén las líneas rojas del dossier.
 - Un solo mensaje breve, máximo cuatro líneas. El programa ya filtra a Control y los mensajes irrelevantes: responde siempre al último mensaje de jugador que recibas. No uses NO_REPLY.
@@ -91,13 +92,34 @@ def ask_model(messages):
     return data["choices"][0]["message"]["content"].strip()
 
 
+def coc_grade(roll, skill):
+    """Clasifica una tirada CoC 7a antes de enviarla al modelo."""
+    try:
+        roll, skill = int(roll), int(skill)
+    except (TypeError, ValueError):
+        return "resultado no valido"
+    if roll == 1:
+        return "crítico"
+    if roll == 100 or (skill < 50 and roll >= 96):
+        return "pifia"
+    if roll <= skill // 5:
+        return "éxito extremo"
+    if roll <= skill // 2:
+        return "éxito difícil"
+    if roll <= skill:
+        return "éxito regular"
+    return "fracaso"
+
+
 def message_content(message):
     if message.get("gm"):
         return f"[CONTROL: {message.get('msg', '')}]"
     if message.get("t") == "roll":
         return (
-            f"[{message.get('who')} tiró {message.get('label')} {message.get('val')}%: "
-            f"resultado {message.get('roll')}]")
+            f"[RESULTADO AUTORITATIVO: {message.get('who')} tiró "
+            f"{message.get('label')} con habilidad {message.get('val')}%. "
+            f"d100={message.get('roll')}. Grado: "
+            f"{coc_grade(message.get('roll'), message.get('val'))}]")
     return f"{message.get('who', 'Jugador')}: {message.get('msg', '')}"
 
 
