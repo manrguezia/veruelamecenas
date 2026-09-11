@@ -1,7 +1,7 @@
 import {OPERATIVOS,CHARS,SKILLBASE} from './characters.js';
 import {CONFIG,MAP_TILES,DEVICES,PATROL,PLAN_FIELDS,ZONE_INFO,SECURITY_COLORS} from './scenario.js';
 import {FAQ,answerQuestion,resolveCheck,normalize} from './mecenas.js';
-import {createStore} from './store.js';
+import {createStore} from './store.js?v=2';
 import {channelsFor,summarize} from './conversations.js';
 import {playAccessSequence} from './access-sequence.js';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
