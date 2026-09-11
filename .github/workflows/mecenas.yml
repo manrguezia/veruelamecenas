@@ -1,18 +1,25 @@
 name: Mecenas
+
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '*/5 * * * *'   # cada 5 min desplazado (evita el :00 congestionado)
-  workflow_dispatch: {}    # permite ejecutarlo a mano para probar
+    - cron: "*/10 8-22 * * *"
+
+permissions:
+  contents: read
+
 jobs:
-  mecenas:
+  responder:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Ejecutar Mecenas
+          python-version: "3.12"
+      - name: Responder mensajes pendientes
         env:
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
         run: python mecenas.py
+
