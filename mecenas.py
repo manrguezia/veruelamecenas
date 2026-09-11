@@ -72,7 +72,14 @@ def ask_model(messages):
     request = urllib.request.Request(
         "https://api.groq.com/openai/v1/chat/completions",
         data=body,
-        headers={"Authorization": f"Bearer {KEY}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {KEY}",
+            "Content-Type": "application/json",
+            # Evita que la capa de protección de la API bloquee el agente HTTP
+            # por defecto de Python en los ejecutores de GitHub Actions.
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                          "(KHTML, like Gecko) Chrome/122.0 Safari/537.36",
+        },
         method="POST",
     )
     try:
