@@ -10,7 +10,7 @@ const button=(text,action)=>{const b=node('button',text);b.type='button';b.oncli
 const uid=()=>crypto.randomUUID();
 const localMode=location.protocol==='file:'||new URLSearchParams(location.search).get('local')==='1';
 let loginBusy=false;
-let user,store,atlas,currentChannel='mecenas',viewedId,chatSignature='',mapInstance,loadingMap=false,readSeen={},mecenasErrorUntil=0;
+let user,store,atlas,currentChannel='mecenas',viewedId,chatSignature='',mapInstance,loadingMap=false,readSeen={};
 const labels={camaras:'Cámaras',alarmas:'Alarmas',rondas:'Rondas',garitas:'Garitas',accesos:'Accesos',objetivos:'Objetivos'};
 const zoneLabels={'iglesia':'Iglesia','claustro':'Claustro','sala-capitular':'Sala Capitular','sacristia':'Sacristía','refectorio':'Refectorio','dependencias':'Dependencias','palacio-abacial':'Palacio Abacial','porteria-oficinas':'Portería / Oficinas','hospederia':'Hospedería','monasterio-nuevo':'Monasterio nuevo','recinto':'Recinto y torres','terreno':'Terreno','servicios':'Aljibe, molino y anexos'};
 for(const o of OPERATIVOS){if([...$('#who').options].some(option=>option.value===o.id))continue;const op=node('option',o.name+' · '+o.role);op.value=o.id;$('#who').append(op);}
@@ -22,7 +22,7 @@ $('#loginForm').addEventListener('submit',async e=>{
  if(!enter){$('#loginError').textContent=accepted?'Enlace cancelado. Introduce de nuevo tu clave.':'Acceso no autorizado. Comprueba tu identidad y tu clave.';$('#pin').focus();return;}
  user=o;viewedId=o.gm?'marina':o.id;$('#pin').value='';$('#login').hidden=true;$('#app').hidden=false;$('#identity').textContent=o.name;
  $('#controlTab').hidden=!user.gm;buildPlan();buildChannels();buildSuggestions();
- store=createStore(data=>{renderChat(data);renderPlan(data);renderFindings(data);renderControl(data);},text=>{if(Date.now()>=mecenasErrorUntil)$('#syncStatus').textContent=text;$('#planStatus').textContent=text;},{database:localMode?'':CONFIG.database});
+ store=createStore(data=>{renderChat(data);renderPlan(data);renderFindings(data);renderControl(data);},text=>{$('#syncStatus').textContent=text;$('#planStatus').textContent=text;},{database:localMode?'':CONFIG.database});
  try{const {createAtlas}=await import('./atlas.js');atlas=createAtlas($('#c3d'),showSelection);buildLayers();$('#scanToggle').setAttribute('aria-pressed',String(atlas.scan));}
  catch(err){$('#atlasError').hidden=false;$('#atlasError').textContent='No se ha podido cargar el visor 3D. El chat, el dossier y el plan siguen disponibles. Comprueba la conexión o el soporte WebGL y recarga la página.';console.error(err);buildLayers();}
 });
@@ -92,14 +92,14 @@ function buildSuggestions(){
  for(const [label,q]of [['Encargo',FAQ[0].title],['Cámaras',FAQ[3].title],['Rondas',FAQ[5].title],['Analizar','Quiero analizar el dossier de cámaras']])$('#suggestions').append(button(label,()=>ask(q)));
 }
 function ask(q){currentChannel='mecenas';chatSignature='';$('#chat').classList.add('open');send(q);buildChannels();buildSuggestions();}
-async function send(text){
+function send(text){
  const msg=String(text).trim().slice(0,1200);if(!msg||!user||!store||!allowedChannels().some(c=>c.id===currentChannel))return;
  const id=uid(),ts=Date.now(),record={id,msg,who:user.name,userId:user.id,ch:currentChannel,ts,t:'text',gm:!!user.gm};
  const patch={['messages/'+id]:record};
  // Las respuestas las publica el flujo remoto del Mecenas. Control puede intervenir
  // escribiendo normalmente; sus mensajes nunca generan una respuesta automática.
  store.put(patch);$('#chatInput').value='';$('#chatLog').scrollTop=$('#chatLog').scrollHeight;
- if(!user.gm&&(currentChannel==='mecenas'||currentChannel==='general'||currentChannel.startsWith('priv_'))){await store.flush();void llamarMecenas(id);}
+ if(!user.gm&&(currentChannel==='mecenas'||currentChannel==='general'||currentChannel.startsWith('priv_')))void llamarMecenas(id);
 }
 async function llamarMecenas(messageId){
  const endpoint=CONFIG.mecenasEndpoint;
@@ -109,7 +109,7 @@ async function llamarMecenas(messageId){
   const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messageId})});
   if(!res.ok)throw Error('HTTP '+res.status);
   $('#syncStatus').textContent='El Mecenas está preparando una respuesta…';
- }catch(err){console.error('Mecenas remoto:',err);mecenasErrorUntil=Date.now()+15000;$('#syncStatus').textContent='El Mecenas ha devuelto un error. Revisa los registros del Worker.';}
+ }catch(err){console.error('Mecenas remoto:',err);$('#syncStatus').textContent='No se ha podido contactar con el Mecenas. Reintenta el mensaje.';}
 }
 $('#chatForm').onsubmit=e=>{e.preventDefault();send($('#chatInput').value);};
 $('#chatInput').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send(e.currentTarget.value);}};
