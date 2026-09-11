@@ -99,6 +99,17 @@ function send(text){
  // Las respuestas las publica el flujo remoto del Mecenas. Control puede intervenir
  // escribiendo normalmente; sus mensajes nunca generan una respuesta automática.
  store.put(patch);$('#chatInput').value='';$('#chatLog').scrollTop=$('#chatLog').scrollHeight;
+ if(!user.gm&&(currentChannel==='mecenas'||currentChannel==='general'||currentChannel.startsWith('priv_')))void llamarMecenas(id);
+}
+async function llamarMecenas(messageId){
+ const endpoint=CONFIG.mecenasEndpoint;
+ if(!endpoint||endpoint.includes('REEMPLAZA-ESTA-URL')){ $('#syncStatus').textContent='El Mecenas aún no está conectado.';return; }
+ try{
+  $('#syncStatus').textContent='Consultando al Mecenas…';
+  const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messageId})});
+  if(!res.ok)throw Error('HTTP '+res.status);
+  $('#syncStatus').textContent='El Mecenas está preparando una respuesta…';
+ }catch(err){console.error('Mecenas remoto:',err);$('#syncStatus').textContent='No se ha podido contactar con el Mecenas. Reintenta el mensaje.';}
 }
 $('#chatForm').onsubmit=e=>{e.preventDefault();send($('#chatInput').value);};
 $('#chatInput').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send(e.currentTarget.value);}};
