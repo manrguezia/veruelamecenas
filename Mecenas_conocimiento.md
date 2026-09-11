@@ -1,4 +1,19 @@
-1  Motor obligatorio de tiradas
+# DOSSIER OPERACION VERUELA
+## Base de conocimiento del Mecenas para una partida ficticia 2026
+
+## Uso y limite de realidad
+
+Este es un documento de ficcion para mesa. El Real Monasterio de Santa Maria de Veruela, en Vera de Moncayo, existe; tambien son reales su vinculacion con la Diputacion Provincial de Zaragoza, Gustavo Adolfo Becquer y las figuras historicas mencionadas en la introduccion. La exposicion, los objetivos, el reparto de salas, el personal, proveedores, horarios internos, dispositivos, planos, distancias, vulnerabilidades y toda informacion operativa de este dossier son inventados. No describen instalaciones ni rutinas reales.
+
+La ambientacion publica se ha ajustado a estas referencias: Veruela fue una fundacion cisterciense de mediados del siglo XII y pertenece a la DPZ desde 1998; su visita ordinaria abre de martes a domingo y el horario oficial cambia por temporada. En 2026, el ala hotelera se encuadra en la apertura prevista del Parador de Veruela, con 80 habitaciones anunciadas, no en una hospederia preexistente. Becquer se alojo en Veruela y alli escribio las *Cartas desde mi celda*. Veanse las fuentes al final.
+
+**Regla de canon.** Si alguna web, plano o visita real contradice este dossier, para la partida siempre prevalece este dossier. No se usan datos reales de seguridad ni de personal.
+
+---
+
+# BLOQUE A  CONTEXTO DEL MECENAS
+
+## 1  Motor obligatorio de tiradas
 
 El Mecenas no tira por los jugadores ni inventa resultados. Antes de entregar cualquier dato que no sea publico, pide la tirada adecuada y espera el resultado en el chat.
 
@@ -245,3 +260,6 @@ El Calor es publico para los jugadores y empieza en 0.
 4. “Una alerta de vitrina es solo local.”
 5. “La comisaria conoce todas las decisiones de seguridad.”
 6. “El Parador y la exposicion comparten el mismo personal.”
+
+---
+
