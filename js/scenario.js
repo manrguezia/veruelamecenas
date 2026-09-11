@@ -1,5 +1,5 @@
 // Única fuente del escenario de juego. Seguridad inventada, no describe instalaciones reales.
-export const CONFIG={ database:'https://veruela-89cec-default-rtdb.europe-west1.firebasedatabase.app', path:'/veruela_preparacion_v2', pollMs:3500 };
+export const CONFIG={ database:'https://veruela-89cec-default-rtdb.europe-west1.firebasedatabase.app', path:'/veruela_preparacion_v2', pollMs:3500, mecenasEndpoint:'https://mecenas-veruela.manrguezia.workers.dev' };
 export const MAP_TILES={url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'};
 export const SECURITY_COLORS={camaras:'#ff758d',alarmas:'#ffc66e',rondas:'#ae9cff',garitas:'#8baeff',accesos:'#66e6a8',objetivos:'#fff2b6'};
 export const site=(x,y)=>[(x-600)*.16,(y-430)*.16];
