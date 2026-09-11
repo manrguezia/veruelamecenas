@@ -7,5 +7,5 @@
   const script=document.createElement('script');script.src='./js/local-bundle.js';
   script.onload=()=>{if(document.getElementById('loginSubmit').disabled){fail(new Error('Arranque incompleto'));return;}error.textContent='';};
   script.onerror=fail;document.head.append(script);
- }else import('./app.js?v=7').then(()=>{error.textContent='';}).catch(fail);
+ }else import('./app.js?v=8').then(()=>{error.textContent='';}).catch(fail);
 })();

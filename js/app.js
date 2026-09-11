@@ -117,8 +117,9 @@ $('#chatToggle').onclick=()=>$('#chat').classList.toggle('open');$('#chatClose')
 function renderChat(data){
  const list=messages(data).filter(m=>m.ch===currentChannel);const sig=JSON.stringify(list);if(sig===chatSignature){buildChannels();return;}
  const log=$('#chatLog'),nearBottom=log.scrollHeight-log.scrollTop-log.clientHeight<75||!chatSignature;chatSignature=sig;
- log.replaceChildren();for(const m of list){const e=node('article',null,'message'+(m.bot?' bot':'')+(m.t==='roll'?' roll':''));e.dataset.message=m.id;
-  e.append(node('div',m.who+' · '+new Date(m.ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),'author'),node('p',m.msg));
+  log.replaceChildren();for(const m of list){const e=node('article',null,'message'+(m.bot?' bot':'')+(m.t==='roll'?' roll':''));e.dataset.message=m.id;
+   const visibleMessage=m.t==='roll'&&!user.gm?`Tirada de ${m.label} enviada al Mecenas.`:m.msg;
+   e.append(node('div',m.who+' · '+new Date(m.ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),'author'),node('p',visibleMessage));
   if(m.check&&m.requester===user.id&&!data.messages['resolved_'+m.id])e.append(button('Evaluar · '+m.check,()=>openSheet()));
   log.append(e);
  }
