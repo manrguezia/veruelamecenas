@@ -1,0 +1,42 @@
+// Guion local cerrado: no ejecuta peticiones externas, no usa un modelo de lenguaje.
+// Cada entrada puede editarse sin cambiar el chat ni el visor.
+export const normalize=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+export const FAQ=[
+ {id:'encargo',title:'¿Qué tenemos que llevarnos?',keys:['encargo','objetivo','robar','robo','piezas','llevarnos'],answer:'Tres piezas: «Los durmientes», «La luz que nace de la sombra» y el relicario colonial. Los dos lienzos están en la iglesia; el relicario, en la sala capitular. Nada más. Las quiero intactas.'},
+ {id:'pago',title:'¿Cuál es el acuerdo económico?',keys:['pago','pagar','dinero','anticipo','cobrar','millón','reparto'],answer:'Un millón en total. El anticipo de cien mil ya está en manos de Marina. El resto, contra entrega de las tres piezas intactas. El reparto interno es cosa vuestra.'},
+ {id:'plazo',title:'¿Cuándo se desmonta la exposición?',keys:['plazo','desmontaje','desmonta','fecha','mes','cuando'],answer:'Antes del desmontaje de final de mes. La fecha concreta la confirmaré con Control. No deis por hecho que las vitrinas estarán desconectadas.'},
+ {id:'camaras',title:'¿Qué cámaras recoge el informe?',keys:['camaras','camara','vigilancia','cctv','cobertura','grabacion','graban'],answer:'El dossier contempla diez cámaras: portería, cuatro esquinas del claustro, entrada de monjes, sala capitular, dos accesos al refectorio y plaza de la iglesia. Consulta la capa Cámaras; los abanicos son aproximados.'},
+ {id:'alarmas',title:'¿Qué alarmas hay previstas?',keys:['alarmas','alarma','sensor','sensores','vitrina','contactos','movimiento'],answer:'Seis avisos propuestos: portería, puerta capitular, vitrina del relicario, iglesia, refectorio y almacén. Son independientes de las cámaras. Quitar una capa del plano no cambia su estado.'},
+ {id:'rondas',title:'¿Cómo se organiza la vigilancia?',keys:['rondas','ronda','guardias','guardia','vigilantes','vigilante','turnos','horarios'],answer:'El informe indica dos vigilantes de día y uno de noche. El nocturno parte de portería y realiza rondas orientativas cada hora, de 23:00 a 07:00. No toméis esa rutina como garantía de paso libre.'},
+ {id:'garitas',title:'¿Dónde están los puestos?',keys:['garita','garitas','puestos','caseta','casetas'],answer:'El puesto principal está en portería. El plano añade una caseta auxiliar junto a las dependencias; su ocupación está por confirmar. No presupongáis otro vigilante nocturno.'},
+ {id:'accesos',title:'¿Qué accesos podemos estudiar?',keys:['accesos','acceso','puertas','puerta','cerradura','cerraduras','entrada'],answer:'Estudiad las puertas señaladas en verde y sus conexiones con el claustro. Elegid una alternativa y anotad sus dudas en el plan. No deis por confirmado un acceso sin contrastar la información.'},
+ {id:'iglesia',title:'¿Qué hay en la iglesia?',keys:['iglesia','lienzos','durmientes','luz','cuadros','pinturas'],answer:'En la iglesia están los dos lienzos del encargo. El plano distingue los marcadores V01 y V02. Documentad dimensiones y protección antes de decidir quién los transportará.'},
+ {id:'capitular',title:'¿Dónde está el relicario?',keys:['capitular','relicario','colonial','polavieja'],answer:'El relicario colonial está en la sala capitular. El dossier lo sitúa en una vitrina con aviso de manipulación. El resto de la colección histórica queda fuera del encargo.'},
+ {id:'refectorio',title:'¿Hay objetivos en el refectorio?',keys:['refectorio','farruca','triptico'],answer:'El refectorio forma parte de la exposición, pero ninguna de sus obras está en el encargo. Consideradlo al estudiar conexiones y personal; no añadáis piezas a la lista.'},
+ {id:'claustro',title:'¿Qué conecta el claustro?',keys:['claustro','galeria','galerias','patio'],answer:'El claustro conecta las principales dependencias del núcleo antiguo. Comparad las capas de cámaras y rondas sobre sus galerías. El patio central está abierto.'},
+ {id:'sacristia',title:'¿Qué sabemos de la sacristía?',keys:['sacristia','palacio','abacial','ciego','ciegos'],answer:'No consta cámara propia en la sacristía ni en el palacio abacial dentro de este dossier. Eso no confirma ausencia de cobertura desde otra zona. Dejadlo como dato por contrastar.'},
+ {id:'nuevo',title:'¿Para qué sirve el monasterio nuevo?',keys:['hospederia','nuevo','anexos'],answer:'Es un conjunto auxiliar con patio oriental. No contiene piezas del encargo. El uso de hospedería se ha asignado de forma provisional en el modelo.'},
+ {id:'personal',title:'¿Quién trabaja en la exposición?',keys:['personal','empleados','empleado','limpieza','conservadora','comisaria','mantenimiento'],answer:'El informe recoge comisaria, conservación, taquilla, limpieza, mantenimiento y vigilancia. Preparad qué dato necesitáis de cada función. Coordinad cualquier contacto con Control.'},
+ {id:'equipo',title:'¿Qué deberíamos preparar?',keys:['equipo','material','herramientas','embalaje','embalajes','proteccion','transportar'],answer:'Protección de conservación para dos lienzos y una pieza pequeña, capacidad de transporte y responsables claros. Anotad el material pendiente; no deis por adquiridos recursos que nadie ha confirmado.'},
+ {id:'logistica',title:'¿Cómo organizamos el traslado?',keys:['traslado','coche','vehiculo','ruta','base','reunion','logistica'],answer:'Acordad en el plan el punto de reunión, quién conduce y una alternativa si hay que aplazar. No iniciéis el traslado hasta haber cerrado la preparación.'},
+ {id:'fase',title:'¿Qué falta antes de salir?',keys:['empezar','salimos','viaje','presencial','preparacion','partida','listos','terminar'],answer:'Por aquí cerramos la preparación: información, responsabilidades, equipo y dudas. Cuando esté todo confirmado, acordaremos la salida.'},
+ {id:'identidad',title:'¿Quién está detrás del encargo?',keys:['identidad','comprador','motivos','quien eres','tu nombre','para quien'],answer:'Soy vuestro contacto. El comprador no forma parte de la conversación. Las condiciones del encargo sí.'},
+ {id:'saludo',title:'Hola, Mecenas',keys:['hola','buenas','saludos','gracias'],answer:'Os leo. Concretad la duda: piezas, seguridad, personal o preparación.'},
+ {id:'analisis',title:'Quiero analizar el dossier de cámaras',keys:['analizar','analisis','investigar','investigacion','comprobar','estudiar'],answer:'Revisa el dossier desde tu perfil, con la competencia Descubrir. Necesito una evaluación documental antes de confirmar nada más.',check:{skill:'Descubrir',success:'El documento no confirma cobertura total entre las dependencias. Marca esa incertidumbre y prepara una alternativa; la ausencia de un dispositivo dibujado no demuestra que el paso esté libre.',failure:'La documentación no permite confirmar nada más. Anotad la duda y pedid a Control otra fuente.'}},
+];
+export function answerQuestion(text){
+ const q=normalize(text),words=new Set(q.split(' '));
+ if(!q)return {id:'empty',answer:'Formula una pregunta sobre el encargo.'};
+ if(/\b(desactivo|desactivar|anulo|anular|hackeo|hackear|forzar|forzamos|entramos|entro|saltamos|escalar|disparo)\b/.test(q))return {id:'mesa',answer:'Anótalo como propuesta del plan. Primero necesito que cerréis la preparación. No daré por ejecutada una acción desde este canal.'};
+ // Los temas no incluidos nunca se completan con texto inventado.
+ if(/\b(instrucciones|prompt|ignora|olvida|sistema|secreto)\b/.test(q)&&!words.has('alarmas'))return {id:'limite',answer:'Me ciño al dossier del encargo. Pregunta por las piezas, la seguridad prevista o la preparación.'};
+ if(/\b(analizar|analisis|investigar|estudiar|comprobar)\b/.test(q))return FAQ.find(f=>f.id==='analisis');
+ const ranked=FAQ.map(f=>({f,score:f.keys.reduce((n,k)=>n+(normalize(k).includes(' ')?(' '+q+' ').includes(' '+normalize(k)+' ')?4:0:words.has(normalize(k))?2:0),0)})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score);
+ if(!ranked.length)return {id:'fallback',answer:'No tengo ese dato en el dossier. Déjalo en Dudas pendientes para Control. Puedo aclarar piezas, cámaras, alarmas, rondas, accesos y equipo.'};
+ return ranked[0].f;
+}
+export function resolveCheck(entry,roll){
+ if(!entry?.check||normalize(roll.label)!==normalize(entry.check.skill))return null;
+ const success=roll.roll===1||(roll.roll<=roll.val&&!(roll.val<50&&roll.roll>=96)&&roll.roll<100);
+ return {id:'resultado-'+entry.id,answer:success?entry.check.success:entry.check.failure};
+}
