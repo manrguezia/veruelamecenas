@@ -32,6 +32,7 @@ export function createStore(onChange,onStatus,{database=CONFIG.database}={}){
   }catch{status('Sin conexión compartida · cambios guardados aquí; se reintentará.');}finally{busy=false;}
  }
  function put(patch){const stamped={};for(const [k,v]of Object.entries(patch))stamped[k]=k.startsWith('messages/')?{...v,epoch:data.epoch}:v;apply(stamped);Object.assign(pending,stamped);cache();notify();if(database){status('Guardado aquí · compartiendo…');clearTimeout(debounce);debounce=setTimeout(refresh,350);}else{pending={};cache();status('Modo local · solo este navegador');}}
+ async function flush(){clearTimeout(debounce);while(busy)await new Promise(resolve=>setTimeout(resolve,50));await refresh();}
  async function resetChat(){
   if(busy)throw Error('Hay una sincronización en curso. Espera unos segundos y reintenta.');
   busy=true;clearTimeout(debounce);const epoch=crypto.randomUUID(),epochTs=Date.now();
@@ -43,5 +44,5 @@ export function createStore(onChange,onStatus,{database=CONFIG.database}={}){
  }
  function storage(e){if(e.key!==key||!e.newValue)return;try{const c=JSON.parse(e.newValue);if(c?.data){if((c.data.epochTs||0)<data.epochTs)return;merge(c.data);for(const [k,v]of Object.entries(c.pending||{}))if(!k.startsWith('messages/')||epochOf(v)===data.epoch)pending[k]=v;notify();}}catch{}}
  window.addEventListener('storage',storage);notify();void refresh();const timer=setInterval(refresh,CONFIG.pollMs);
- return {get data(){return data;},put,refresh,resetChat,stop(){stopped=true;clearInterval(timer);clearTimeout(debounce);window.removeEventListener('storage',storage);},get pendingCount(){return Object.keys(pending).length;}};
+ return {get data(){return data;},put,refresh,flush,resetChat,stop(){stopped=true;clearInterval(timer);clearTimeout(debounce);window.removeEventListener('storage',storage);},get pendingCount(){return Object.keys(pending).length;}};
 }
