@@ -25,7 +25,7 @@ $('#loginForm').addEventListener('submit',async e=>{
  user=o;viewedId=o.gm?'marina':o.id;$('#pin').value='';$('#login').hidden=true;$('#app').hidden=false;$('#identity').textContent=o.name;
  $('#controlTab').hidden=!user.gm;buildPlan();buildChannels();buildSuggestions();
  store=createStore(data=>{renderChat(data);renderPlan(data);renderFindings(data);renderControl(data);},text=>{if(Date.now()>=mecenasErrorUntil)$('#syncStatus').textContent=text;$('#planStatus').textContent=text;},{database:localMode?'':CONFIG.database});
- try{const {createAtlas}=await import('./atlas.js');atlas=createAtlas($('#c3d'),showSelection);buildLayers();$('#scanToggle').setAttribute('aria-pressed',String(atlas.scan));}
+ try{const {createAtlas}=await import('./atlas.js?v=layers-1');atlas=createAtlas($('#c3d'),showSelection);buildLayers();$('#scanToggle').setAttribute('aria-pressed',String(atlas.scan));}
  catch(err){$('#atlasError').hidden=false;$('#atlasError').textContent='No se ha podido cargar el visor 3D. El chat, el dossier y el plan siguen disponibles. Comprueba la conexión o el soporte WebGL y recarga la página.';console.error(err);buildLayers();}
 });
 $('#logout').onclick=()=>{store?.stop();atlas?.dispose();location.reload();};
@@ -33,28 +33,44 @@ function tab(id){if(id==='control'&&!user?.gm)return;for(const page of $$('.page
 for(const b of $$('[data-tab]'))b.onclick=()=>tab(b.dataset.tab);
 for(const b of $$('[data-zone]'))b.onclick=()=>{tab('atlas');atlas?.focusZone(b.dataset.zone);showSelection({zone:b.dataset.zone});};
 $('.brand').onclick=e=>{e.preventDefault();if(user)tab('atlas');};
-$('#viewFull').onclick=()=>atlas?.perspective();$('#viewPlan').onclick=()=>atlas?.plan();
+$('#viewFull').onclick=()=>{clearAtlasSelection();atlas?.perspective();};$('#viewPlan').onclick=()=>atlas?.plan();
 $('#scanToggle').onclick=()=>{if(!atlas)return;atlas.setScan(!atlas.scan);$('#scanToggle').setAttribute('aria-pressed',String(atlas.scan));};
-$('#selectionClose').onclick=()=>{$('#selection').hidden=true;atlas?.select(null);};
+function clearAtlasSelection(){$('#selection').hidden=true;atlas?.select(null);}
+$('#selectionClose').onclick=clearAtlasSelection;
 const layersToggle=button('Capas',()=>{const open=$('#atlas').classList.toggle('layers-open');layersToggle.setAttribute('aria-expanded',String(open));});layersToggle.id='layersToggle';layersToggle.setAttribute('aria-expanded','false');$('.canvas-wrap').append(layersToggle);
-$('.view-controls').append(button('Núcleo',()=>{atlas?.focusZone('claustro');}),button('Plano original',()=>roomGallery.open('plano-documental','Planta de referencia')));
+$('.view-controls').append(button('Núcleo',()=>{atlas?.focusZone('claustro');clearAtlasSelection();}),button('Plano original',()=>roomGallery.open('plano-documental','Planta de referencia')));
 
 function buildLayers(){
  $('#layerList').replaceChildren();$('#zoneList').replaceChildren();
  let saved={};try{saved=JSON.parse(localStorage.getItem('veruela-layers-v2')||'{}');}catch{}
  function row(id,label,color,kind){const r=node('div',null,'toggle-row'),sw=node('i',null,'swatch');sw.style.setProperty('--swatch',color);r.append(sw);
-  if(kind==='zone')r.append(button(label,()=>{showSelection({zone:id});atlas?.select(id);}));
+  if(kind==='zone')r.append(button(label,()=>{showSelection({zone:id});}));
   else{const l=node('label',label);l.htmlFor='show-'+id;r.append(l);}
   const c=node('input');c.type='checkbox';c.id='show-'+id;c.setAttribute('aria-label','Mostrar '+label);
   c.checked=saved[kind+'-'+id]??(kind==='zone'||!['alarmas','accesos'].includes(id));
-  const update=()=>{r.classList.toggle('dim',!c.checked);if(kind==='zone')atlas?.dimZone(id,!c.checked);else atlas?.dimLayer(id,!c.checked);saved[kind+'-'+id]=c.checked;try{localStorage.setItem('veruela-layers-v2',JSON.stringify(saved));}catch{}};
+  const update=()=>{r.classList.toggle('dim',!c.checked);if(kind==='zone'){if(!c.checked&&atlas?.selected===id)clearAtlasSelection();atlas?.dimZone(id,!c.checked);}else atlas?.dimLayer(id,!c.checked);saved[kind+'-'+id]=c.checked;try{localStorage.setItem('veruela-layers-v2',JSON.stringify(saved));}catch{}updateAllToggle();};
   c.onchange=update;r.append(c);update();return r;
  }
  for(const [id,label]of Object.entries(labels))$('#layerList').append(row(id,label,SECURITY_COLORS[id],'layer'));
  for(const [id,label]of Object.entries(zoneLabels))$('#zoneList').append(row(id,label,atlas?.model.zones[id].color||'#66e6ce','zone'));
+ updateAllToggle();
 }
-$('#restore').onclick=()=>{$$('#zoneList input').forEach(c=>{c.checked=true;c.dispatchEvent(new Event('change'));});};
+function updateAllToggle(){
+ const boxes=$$('#zoneList input, #layerList input');
+ const all=boxes.length>0&&boxes.every(c=>c.checked);
+ $('#toggleAllLayers').textContent=all?'Desmarcar todas':'Marcar todas';
+}
+$('#toggleAllLayers').onclick=()=>{
+ const boxes=$$('#zoneList input, #layerList input'),checked=!boxes.every(c=>c.checked);
+ clearAtlasSelection();
+ for(const c of boxes){c.checked=checked;c.dispatchEvent(new Event('change'));}
+ updateAllToggle();
+};
 function showSelection({zone,device}){
+ if(!zone&&!device){clearAtlasSelection();return;}
+ const selectedZone=zone||device.zone,checkbox=$('#show-'+selectedZone);
+ if(checkbox&&!checkbox.checked){checkbox.checked=true;checkbox.dispatchEvent(new Event('change'));}
+ atlas?.select(selectedZone);
  const photoZone=zone||device?.zone;if(photoZone)roomGallery.select(photoZone,zoneLabels[photoZone]||photoZone);
  $('#selection').hidden=false;$('#selectionActions').replaceChildren();
  if(device){$('#selectionType').textContent=device.id+' / '+labels[device.layer];$('#selectionTitle').textContent=device.name;$('#selectionText').textContent=device.detail;

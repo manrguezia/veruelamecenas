@@ -33,15 +33,16 @@ export function createAtlas(canvas,onSelect){
   if(d.layer==='garitas'){const g=own(new THREE.EdgesGeometry(new THREE.BoxGeometry(2,2.5,2)));const frame=new THREE.LineSegments(g,own(new THREE.LineBasicMaterial({color,transparent:true,opacity:.7})));frame.position.set(x,1.25,z);group.add(frame);}
  }
  const route=lines(PATROL.points.map(([x,z])=>[x,.3,z]),SECURITY_COLORS.rondas,.8);layers.rondas.add(route);
- const routeIcon=label('R01',SECURITY_COLORS.rondas);routeIcon.position.set(...[PATROL.points[3][0],17,PATROL.points[3][1]]);routeIcon.scale.set(3.6,1.8,1);routeIcon.userData.device=PATROL;layers.rondas.add(routeIcon);targets.push(routeIcon);
+ const routeIcon=label('R01',SECURITY_COLORS.rondas);routeIcon.position.set(...[PATROL.points[3][0],17,PATROL.points[3][1]]);routeIcon.scale.set(3.6,1.8,1);route.userData.device=PATROL;routeIcon.userData.device=PATROL;layers.rondas.add(routeIcon);targets.push(routeIcon);
  for(const layer of Object.values(layers))layer.traverse(o=>{if(o.material)baseOpacity.set(o.material,o.material.opacity);});
+ const dimmedZone=id=>zoneDim.has(id)||(selected!==null&&id!==selected);
  function sync(){
   for(const [id,z]of Object.entries(model.zones)){
-   const factor=zoneDim.has(id)?.09:1;z.lineMaterial.uniforms.alpha.value=.78*factor;z.surfaceMaterial.uniforms.alpha.value=(z.active?.12:.035)*factor;
+   const factor=dimmedZone(id)?.09:1;z.lineMaterial.uniforms.alpha.value=.78*factor;z.surfaceMaterial.uniforms.alpha.value=(z.active?.12:.035)*factor;
   }
-  for(const [id,g]of Object.entries(layers))g.traverse(o=>{if(o.material){const d=o.userData.device||o.parent.userData.device;const dim=layerDim.has(id)||(d&&zoneDim.has(d.zone));o.material.opacity=baseOpacity.get(o.material)*(dim?.055:1);}});
+  for(const [id,g]of Object.entries(layers))g.traverse(o=>{if(o.material){const d=o.userData.device||o.parent.userData.device;const dim=layerDim.has(id)||(d&&dimmedZone(d.zone));o.material.opacity=baseOpacity.get(o.material)*(dim?.055:1);}});
  }
- function select(id){selected=id;model.clearActive();if(model.zones[id])model.setActive(id);sync();}
+ function select(id){selected=model.zones[id]?id:null;model.clearActive();if(model.zones[id])model.setActive(id);sync();}
  function fitDistance(){const vertical=THREE.MathUtils.degToRad(camera.fov),horizontal=2*Math.atan(Math.tan(vertical/2)*camera.aspect);return model.bounds.getBoundingSphere(new THREE.Sphere()).radius/Math.sin(Math.min(vertical,horizontal)/2)*1.05;}
  function perspective(){overview=true;controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(65,143,163).normalize().multiplyScalar(fitDistance()));controls.update();}
  function plan(){overview=false;controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(0,fitDistance(),.001));controls.update();}
@@ -52,10 +53,10 @@ export function createAtlas(canvas,onSelect){
  canvas.addEventListener('pointerup',e=>{
   if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>5)return;
   const r=canvas.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);raycaster.setFromCamera(mouse,camera);
-  const eligible=targets.filter(o=>!layerDim.has(o.userData.device.layer)&&!zoneDim.has(o.userData.device.zone));
+  const eligible=targets.filter(o=>!layerDim.has(o.userData.device.layer)&&!dimmedZone(o.userData.device.zone));
   const marker=raycaster.intersectObjects(eligible,false)[0];if(marker){onSelect({device:marker.object.userData.device});return;}
   const hit=raycaster.intersectObjects(model.pickables.filter(o=>!zoneDim.has(o.userData.zoneId)),false)[0];
-  const id=model.getZoneFromIntersection(hit);if(id){select(id);onSelect({zone:id});}
+  const id=model.getZoneFromIntersection(hit);if(id){select(id);onSelect({zone:id});}else{select(null);onSelect({zone:null});}
  });
  const resize=()=>{const r=canvas.parentElement.getBoundingClientRect();if(!r.width||!r.height)return;renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();if(overview)perspective();};
  const observer=new ResizeObserver(resize);observer.observe(canvas.parentElement);perspective();resize();model.setScanEnabled(scan);
@@ -65,6 +66,7 @@ export function createAtlas(canvas,onSelect){
   dimLayer(id,value){value?layerDim.add(id):layerDim.delete(id);sync();},
   setScan(value){scan=value;model.setScanEnabled(value);},
   get scan(){return scan;},
+  get selected(){return selected;},
   dispose(){renderer.setAnimationLoop(null);observer.disconnect();controls.dispose();model.dispose();owned.forEach(o=>o.dispose());renderer.dispose();},
  };
 }
