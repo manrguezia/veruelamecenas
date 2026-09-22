@@ -6,7 +6,7 @@ import {DEVICES,PATROL,SECURITY_COLORS} from './scenario.js';
 export function createAtlas(canvas,onSelect){
  const scene=new THREE.Scene();scene.background=new THREE.Color(COLORS.background);
  const renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));
- const camera=new THREE.PerspectiveCamera(37,1,.1,800),controls=new OrbitControls(camera,canvas);
+ const camera=new THREE.PerspectiveCamera(37,1,.1,4000),controls=new OrbitControls(camera,canvas);
  controls.enableDamping=true;controls.minDistance=18;controls.maxDistance=1400;controls.maxPolarAngle=Math.PI*.49;
  const model=createMonasteryModel(scene);const layers={},targets=[],owned=[],zoneDim=new Set(),layerDim=new Set();
  const center=model.bounds.getCenter(new THREE.Vector3());center.y=0;

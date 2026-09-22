@@ -4,6 +4,7 @@ import {FAQ,answerQuestion,resolveCheck,normalize} from './mecenas.js';
 import {createStore} from './store.js?v=2';
 import {channelsFor,summarize} from './conversations.js';
 import {playAccessSequence} from './access-sequence.js';
+import {createRoomGallery} from './room-gallery.js';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e;};
 const button=(text,action)=>{const b=node('button',text);b.type='button';b.onclick=action;return b;};
@@ -11,8 +12,9 @@ const uid=()=>crypto.randomUUID();
 const localMode=location.protocol==='file:'||new URLSearchParams(location.search).get('local')==='1';
 let loginBusy=false;
 let user,store,atlas,currentChannel='mecenas',viewedId,chatSignature='',mapInstance,loadingMap=false,readSeen={},mecenasErrorUntil=0;
+const roomGallery=createRoomGallery();
 const labels={camaras:'Cámaras',alarmas:'Alarmas',rondas:'Rondas',garitas:'Garitas',accesos:'Accesos',objetivos:'Objetivos'};
-const zoneLabels={'iglesia':'Iglesia','claustro':'Claustro','sala-capitular':'Sala Capitular','sacristia':'Sacristía','refectorio':'Refectorio','dependencias':'Dependencias','palacio-abacial':'Palacio Abacial','porteria-oficinas':'Portería / Oficinas','hospederia':'Hospedería','monasterio-nuevo':'Monasterio nuevo','recinto':'Recinto y torres','terreno':'Terreno','servicios':'Aljibe, molino y anexos'};
+const zoneLabels={'iglesia':'Iglesia','claustro':'Claustro','sala-capitular':'Sala Capitular','sacristia':'Sacristía','refectorio':'Refectorio','dependencias':'Dependencias','scriptorium':'Scriptorium','dormitorio':'Dormitorio / Salón de Reyes','cocina':'Cocina','cilla':'Cilla / Almacén','plano-documental':'Trazado del plano','palacio-abacial':'Palacio Abacial','porteria-oficinas':'Portería / Oficinas','hospederia':'Hospedería','monasterio-nuevo':'Monasterio nuevo','recinto':'Recinto y torres','terreno':'Terreno','servicios':'Aljibe, molino y anexos'};
 for(const o of OPERATIVOS){if([...$('#who').options].some(option=>option.value===o.id))continue;const op=node('option',o.name+' · '+o.role);op.value=o.id;$('#who').append(op);}
 $('#loginForm').addEventListener('submit',async e=>{
  e.preventDefault();if(user||loginBusy)return;const o=OPERATIVOS.find(x=>x.id===$('#who').value);
@@ -35,7 +37,7 @@ $('#viewFull').onclick=()=>atlas?.perspective();$('#viewPlan').onclick=()=>atlas
 $('#scanToggle').onclick=()=>{if(!atlas)return;atlas.setScan(!atlas.scan);$('#scanToggle').setAttribute('aria-pressed',String(atlas.scan));};
 $('#selectionClose').onclick=()=>{$('#selection').hidden=true;atlas?.select(null);};
 const layersToggle=button('Capas',()=>{const open=$('#atlas').classList.toggle('layers-open');layersToggle.setAttribute('aria-expanded',String(open));});layersToggle.id='layersToggle';layersToggle.setAttribute('aria-expanded','false');$('.canvas-wrap').append(layersToggle);
-$('.view-controls').append(button('Núcleo',()=>{atlas?.focusZone('claustro');}));
+$('.view-controls').append(button('Núcleo',()=>{atlas?.focusZone('claustro');}),button('Plano original',()=>roomGallery.open('plano-documental','Planta de referencia')));
 
 function buildLayers(){
  $('#layerList').replaceChildren();$('#zoneList').replaceChildren();
@@ -53,6 +55,7 @@ function buildLayers(){
 }
 $('#restore').onclick=()=>{$$('#zoneList input').forEach(c=>{c.checked=true;c.dispatchEvent(new Event('change'));});};
 function showSelection({zone,device}){
+ const photoZone=zone||device?.zone;if(photoZone)roomGallery.select(photoZone,zoneLabels[photoZone]||photoZone);
  $('#selection').hidden=false;$('#selectionActions').replaceChildren();
  if(device){$('#selectionType').textContent=device.id+' / '+labels[device.layer];$('#selectionTitle').textContent=device.name;$('#selectionText').textContent=device.detail;
   $('#selectionActions').append(button('Consultar al Mecenas',()=>ask('¿Qué sabemos de '+labels[device.layer].toLowerCase()+'?')));
