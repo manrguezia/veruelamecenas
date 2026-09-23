@@ -191,7 +191,12 @@ async function openMap(){
  if(mapInstance){mapInstance.invalidateSize();return;}if(loadingMap)return;loadingMap=true;
  try{
   if(!window.L)await new Promise((resolve,reject)=>{const s=node('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';s.onload=resolve;s.onerror=reject;document.head.append(s);});
-  const L=window.L;$('#zmap').replaceChildren();mapInstance=L.map('zmap').setView([41.77,-1.74],11);
+  const L=window.L;$('#zmap').replaceChildren();mapInstance=L.map('zmap');
+  const locations=[
+   {coordinates:[41.814900025943665,-1.6935312705870214],name:'Monasterio de Veruela'},
+   {coordinates:[41.81220438238024,-1.8198222534656898],name:'Casa del equipo · alojamiento previo'},
+  ];
+  mapInstance.fitBounds(locations.map(location=>location.coordinates),{padding:[45,45],maxZoom:13});
   const tileLayer=L.tileLayer(MAP_TILES.url,{maxZoom:MAP_TILES.maxZoom,attribution:MAP_TILES.attribution});
   const notice=node('div',null,'map-load-status');notice.hidden=true;notice.setAttribute('role','status');$('#map').append(notice);
   let failed=false;
@@ -199,7 +204,7 @@ async function openMap(){
   tileLayer.on('tileerror',()=>{failed=true;notice.hidden=false;notice.replaceChildren(node('span','No se ha podido cargar parte del callejero. Comprueba tu conexión.'),button('Reintentar',()=>{failed=false;notice.hidden=true;tileLayer.redraw();}));});
   tileLayer.on('load',()=>{if(!failed)notice.hidden=true;});
   tileLayer.addTo(mapInstance);L.control.scale({imperial:false}).addTo(mapInstance);
-  for(const [lat,lon,name]of [[41.7333,-1.6883,'Monasterio de Veruela'],[41.81233,-1.81984,'Base del equipo · provisional'],[41.7406,-1.6986,'Vera de Moncayo'],[41.7469,-1.7261,'Trasmoz'],[41.9042,-1.7239,'Tarazona']])L.circleMarker([lat,lon],{radius:6,color:'#66e6ce'}).addTo(mapInstance).bindTooltip(name);
+  for(const location of locations)L.circleMarker(location.coordinates,{radius:7,color:'#66e6ce',fillOpacity:0.8}).addTo(mapInstance).bindTooltip(location.name,{permanent:true,direction:'top'});
  }catch{$('#zmap').replaceChildren(node('p','No se ha podido cargar el mapa. Comprueba la conexión y vuelve a abrir esta pestaña.','empty'));}finally{loadingMap=false;}
 }
 window.addEventListener('beforeunload',()=>{store?.stop();atlas?.dispose();});
