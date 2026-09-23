@@ -3,18 +3,19 @@
 const modules={"web/js/app.js":function(load,exports){
 const {OPERATIVOS:OPERATIVOS,CHARS:CHARS,SKILLBASE:SKILLBASE}=load("web/js/characters.js");
 const {CONFIG:CONFIG,MAP_TILES:MAP_TILES,DEVICES:DEVICES,PATROL:PATROL,PLAN_FIELDS:PLAN_FIELDS,ZONE_INFO:ZONE_INFO,SECURITY_COLORS:SECURITY_COLORS}=load("web/js/scenario.js");
-const {FAQ:FAQ,answerQuestion:answerQuestion,resolveCheck:resolveCheck,normalize:normalize}=load("web/js/mecenas.js");
+const {FAQ:FAQ,answerQuestion:answerQuestion,normalize:normalize,canUseSkill:canUseSkill}=load("web/js/mecenas.js");
 const {createStore:createStore}=load("web/js/store.js");
 const {channelsFor:channelsFor,summarize:summarize}=load("web/js/conversations.js");
 const {playAccessSequence:playAccessSequence}=load("web/js/access-sequence.js");
 const {createRoomGallery:createRoomGallery}=load("web/js/room-gallery.js");
+const {scriptedReply:scriptedReply,pendingCheck:pendingCheck}=load("web/js/mecenas-script.js");
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e;};
 const button=(text,action)=>{const b=node('button',text);b.type='button';b.onclick=action;return b;};
 const uid=()=>crypto.randomUUID();
 const localMode=location.protocol==='file:'||new URLSearchParams(location.search).get('local')==='1';
 let loginBusy=false;
-let user,store,atlas,currentChannel='mecenas',viewedId,chatSignature='',mapInstance,loadingMap=false,readSeen={},mecenasErrorUntil=0;
+let user,store,atlas,currentChannel='mecenas',viewedId,chatSignature='',mapInstance,loadingMap=false,readSeen={},selectedCheckId=null;
 const roomGallery=createRoomGallery();
 const labels={camaras:'Cámaras',alarmas:'Alarmas',rondas:'Rondas',garitas:'Garitas',accesos:'Accesos',objetivos:'Objetivos'};
 const zoneLabels={'iglesia':'Iglesia','claustro':'Claustro','sala-capitular':'Sala Capitular','sacristia':'Sacristía','refectorio':'Refectorio','dependencias':'Dependencias','scriptorium':'Scriptorium','dormitorio':'Dormitorio / Salón de Reyes','cocina':'Cocina','cilla':'Cilla / Almacén','plano-documental':'Trazado del plano','palacio-abacial':'Palacio Abacial','porteria-oficinas':'Portería / Oficinas','hospederia':'Hospedería','monasterio-nuevo':'Monasterio nuevo','recinto':'Recinto y torres','terreno':'Terreno','servicios':'Aljibe, molino y anexos'};
@@ -27,7 +28,7 @@ $('#loginForm').addEventListener('submit',async e=>{
  if(!enter){$('#loginError').textContent=accepted?'Enlace cancelado. Introduce de nuevo tu clave.':'Acceso no autorizado. Comprueba tu identidad y tu clave.';$('#pin').focus();return;}
  user=o;viewedId=o.gm?'marina':o.id;$('#pin').value='';$('#login').hidden=true;$('#app').hidden=false;$('#identity').textContent=o.name;
  $('#controlTab').hidden=!user.gm;buildPlan();buildChannels();buildSuggestions();
- store=createStore(data=>{renderChat(data);renderPlan(data);renderFindings(data);renderControl(data);},text=>{if(Date.now()>=mecenasErrorUntil)$('#syncStatus').textContent=text;$('#planStatus').textContent=text;},{database:localMode?'':CONFIG.database});
+ store=createStore(data=>{renderChat(data);renderPlan(data);renderFindings(data);renderControl(data);},text=>{$('#syncStatus').textContent=text;$('#planStatus').textContent=text;},{database:localMode?'':CONFIG.database});
  try{const {createAtlas}=await Promise.resolve(load("web/js/atlas.js"));atlas=createAtlas($('#c3d'),showSelection);buildLayers();$('#scanToggle').setAttribute('aria-pressed',String(atlas.scan));}
  catch(err){$('#atlasError').hidden=false;$('#atlasError').textContent='No se ha podido cargar el visor 3D. El chat, el dossier y el plan siguen disponibles. Comprueba la conexión o el soporte WebGL y recarga la página.';console.error(err);buildLayers();}
 });
@@ -77,7 +78,7 @@ function showSelection({zone,device}){
  const photoZone=zone||device?.zone;if(photoZone)roomGallery.select(photoZone,zoneLabels[photoZone]||photoZone);
  $('#selection').hidden=false;$('#selectionActions').replaceChildren();
  if(device){$('#selectionType').textContent=device.id+' / '+labels[device.layer];$('#selectionTitle').textContent=device.name;$('#selectionText').textContent=device.detail;
-  $('#selectionActions').append(button('Consultar al Mecenas',()=>ask('¿Qué sabemos de '+labels[device.layer].toLowerCase()+'?')));
+  $('#selectionActions').append(button('Consultar al Mecenas',()=>ask(['camaras','alarmas'].includes(device.layer)?'Quiero consultar la ficha de '+device.id:'¿Qué sabemos de '+labels[device.layer].toLowerCase()+'?')));
  }else{
   atlas?.select(zone);$('#selectionType').textContent='DEPENDENCIA / DOSSIER';$('#selectionTitle').textContent=zoneLabels[zone];$('#selectionText').textContent=ZONE_INFO[zone];
   $('#selectionActions').append(button('Acercar',()=>atlas?.focusZone(zone)),button('Dispositivos',()=>{
@@ -89,9 +90,9 @@ function showSelection({zone,device}){
 function allowedChannels(){return channelsFor(user);}
 function messages(data=store?.data){return Object.values(data?.messages||{}).filter(m=>m&&typeof m.msg==='string'&&Number.isFinite(m.ts)&&typeof m.id==='string').map(m=>{
  // Actualiza la presentación del guion antiguo sin modificar el historial almacenado.
- const entry=m.bot?FAQ.find(f=>f.id===m.topic):null;
+ const entry=m.bot&&!m.scriptVersion?FAQ.find(f=>f.id===m.topic):null;
  let text=entry?entry.answer:m.msg;
- if(m.bot){
+ if(m.bot&&!m.scriptVersion){
   if(m.topic==='mesa')text=answerQuestion('desactivo').answer;
   else if(m.topic==='fallback')text=answerQuestion('dato no catalogado').answer;
   text=text.replaceAll('con el Máster','con Control').replaceAll('para el Máster','para Control');
@@ -111,27 +112,16 @@ function buildChannels(){
 }
 function buildSuggestions(){
  $('#suggestions').replaceChildren();if(!['mecenas','general'].includes(currentChannel))return;
- for(const [label,q]of [['Encargo',FAQ[0].title],['Cámaras',FAQ[3].title],['Rondas',FAQ[5].title],['Analizar','Quiero analizar el dossier de cámaras']])$('#suggestions').append(button(label,()=>ask(q)));
+ for(const [label,q]of [['Encargo',FAQ[0].title],['Cámaras',FAQ[3].title],['Rondas',FAQ[5].title],['Analizar','Quiero analizar el dossier de cámaras'],['Personal','¿Quién trabaja allí?'],['Proveedores','¿Qué proveedores participan?'],['Residentes','¿Quiénes viven allí?'],['Ayuda','¿Sobre qué puedo preguntar?']])$('#suggestions').append(button(label,()=>ask(q)));
 }
 function ask(q){currentChannel='mecenas';chatSignature='';$('#chat').classList.add('open');send(q);buildChannels();buildSuggestions();}
 async function send(text){
  const msg=String(text).trim().slice(0,1200);if(!msg||!user||!store||!allowedChannels().some(c=>c.id===currentChannel))return;
  const id=uid(),ts=Date.now(),record={id,msg,who:user.name,userId:user.id,ch:currentChannel,ts,t:'text',gm:!!user.gm};
  const patch={['messages/'+id]:record};
- // Las respuestas las publica el flujo remoto del Mecenas. Control puede intervenir
- // escribiendo normalmente; sus mensajes nunca generan una respuesta automática.
+ record.mecenasMode='script';
+ Object.assign(patch,scriptedReply(record,store.data));
  store.put(patch);$('#chatInput').value='';$('#chatLog').scrollTop=$('#chatLog').scrollHeight;
- if(!user.gm&&(currentChannel==='mecenas'||currentChannel==='general'||currentChannel.startsWith('priv_'))){await store.flush();void llamarMecenas(id);}
-}
-async function llamarMecenas(messageId){
- const endpoint=CONFIG.mecenasEndpoint;
- if(!endpoint||endpoint.includes('REEMPLAZA-ESTA-URL')){ $('#syncStatus').textContent='El Mecenas aún no está conectado.';return; }
- try{
-  $('#syncStatus').textContent='Consultando al Mecenas…';
-  const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messageId})});
-  if(!res.ok)throw Error('HTTP '+res.status);
-  $('#syncStatus').textContent='El Mecenas está preparando una respuesta…';
- }catch(err){console.error('Mecenas remoto:',err);mecenasErrorUntil=Date.now()+15000;$('#syncStatus').textContent='El Mecenas ha devuelto un error. Revisa los registros del Worker.';}
 }
 $('#chatForm').onsubmit=e=>{e.preventDefault();send($('#chatInput').value);};
 $('#chatInput').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send(e.currentTarget.value);}};
@@ -142,7 +132,7 @@ function renderChat(data){
   log.replaceChildren();for(const m of list){const e=node('article',null,'message'+(m.bot?' bot':'')+(m.t==='roll'?' roll':''));e.dataset.message=m.id;
    const visibleMessage=m.t==='roll'&&!user.gm?`Tirada de ${m.label} enviada al Mecenas.`:m.msg;
    e.append(node('div',m.who+' · '+new Date(m.ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),'author'),node('p',visibleMessage));
-  if(m.check&&m.requester===user.id&&!data.messages['resolved_'+m.id])e.append(button('Evaluar · '+m.check,()=>openSheet()));
+  if(m.check&&m.requester===user.id&&!data.messages['resolved_'+m.id])e.append(button('Evaluar · '+m.check,()=>{selectedCheckId=m.id;currentChannel=m.ch;viewedId=user.id;openSheet();}));
   log.append(e);
  }
  if(!list.length)log.append(node('p',currentChannel==='mecenas'?'El Mecenas está disponible. Pregunta por el encargo o utiliza una de las consultas sugeridas.':currentChannel==='general'?'Canal del equipo. Las preguntas al Mecenas pueden dirigirse con @mecenas.':'Sin mensajes todavía. Este enlace es visible para sus interlocutores y Control.','empty'));
@@ -168,31 +158,37 @@ $('#exportPlan').onclick=()=>{
  const lines=['# Operación Veruela — Preparación','', 'Tres piezas intactas: La luz que nace de la sombra, Los durmientes y el relicario colonial.',''];
  for(const [id,label]of PLAN_FIELDS)lines.push('## '+label,store.data.plan[id]?.value||'Pendiente','');
  lines.push('## Información reunida');for(const m of messages())if(m.who==='Mecenas'&&['mecenas','general'].includes(m.ch))lines.push('- '+m.msg);
- lines.push('','## Siguiente paso','Confirmar responsabilidades, recursos y disponibilidad antes de acordar la salida.');
+ lines.push('','## Siguiente paso','Confirmar responsabilidades, recursos y disponibilidad para la noche del 31 de diciembre de 2026, fecha de cierre de la exposición.');
  const url=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/markdown;charset=utf-8'})),a=node('a');a.href=url;a.download='Veruela-plan-del-equipo.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-function pendingFor(id){return messages().filter(m=>m.check&&m.requester===id&&!store.data.messages['resolved_'+m.id]).at(-1);}
+function pendingFor(id){
+ const chosen=selectedCheckId&&store.data.messages[selectedCheckId];
+ if(chosen&&chosen.requester===id&&chosen.ch===currentChannel&&!store.data.messages['resolved_'+chosen.id])return chosen;
+ return pendingCheck(store.data,id,currentChannel);
+}
 function openSheet(){renderSheet(viewedId);$('#sheet').showModal();$('#sheet').scrollTop=0;}
-$('#sheetOpen').onclick=openSheet;$('#sheetClose').onclick=()=>$('#sheet').close();
+$('#sheetOpen').onclick=()=>{selectedCheckId=null;openSheet();};$('#sheetClose').onclick=()=>$('#sheet').close();
 function renderSheet(id){
  viewedId=id;$('#skillSearch').value='';$('#trainedOnly').checked=false;const c=CHARS[id],o=OPERATIVOS.find(x=>x.id===id);$('#sheetName').textContent=o.name;$('#sheetRole').textContent=o.role+' / '+id.toUpperCase();
  if(user.gm){$('#sheetPick').hidden=false;if(!$('#sheetPick').options.length)for(const p of OPERATIVOS.filter(x=>!x.gm)){const opt=node('option',p.name);opt.value=p.id;$('#sheetPick').append(opt);}$('#sheetPick').value=id;$('#sheetPick').onchange=e=>renderSheet(e.target.value);}
- const pending=pendingFor(id);$('#pendingCheck').hidden=!pending;$('#pendingCheck').textContent=pending?'Consulta pendiente: '+pending.check+'. Usa esa habilidad para completar el análisis.':'';
+ const pending=pendingFor(id);$('#pendingCheck').hidden=!pending;$('#pendingCheck').textContent=pending?'Consulta: '+(pending.checkTitle||'Revisión documental')+'. Competencia: '+pending.check+'. Dificultad: '+(pending.difficulty==='dificil'?'difícil':pending.difficulty||'regular')+'. Selecciona una de las competencias indicadas.':'';
  $('#resources').replaceChildren();for(const [name,value,detail]of [['Puntos de vida',c.pv,'Máximo '+c.pv],['Temple',c.temple,'Valor inicial'],['Suerte',c.suerte,'Valor inicial']]){const card=node('article',null,'resource');card.append(node('span',name),node('strong',value),node('small',detail));$('#resources').append(card);}
  const names={FUE:'Fuerza',CON:'Constitución',DES:'Destreza',APA:'Apariencia',INT:'Inteligencia',POD:'Poder',EDU:'Educación',TAM:'Tamaño'};
- $('#stats').replaceChildren();for(const [k,v]of Object.entries(c.stats)){const b=button('',()=>roll(k,v));b.append(node('span',names[k]),node('strong',v),node('small',k+' / '+Math.floor(v/2)+' / '+Math.floor(v/5)));$('#stats').append(b);}
+ $('#stats').replaceChildren();for(const [k,v]of Object.entries(c.stats)){const b=button('',()=>roll(k,v));b.disabled=!!pending;b.append(node('span',names[k]),node('strong',v),node('small',k+' / '+Math.floor(v/2)+' / '+Math.floor(v/5)));$('#stats').append(b);}
  $('#derived').replaceChildren();for(const [label,value]of [['Movimiento',c.mov],['Bonificación al daño',c.bd],['Corpulencia',c.corp]]){const el=node('div');el.append(node('span',label),node('b',value));$('#derived').append(el);}
  $('#skills').replaceChildren();const skills={...c.skills};for(const [name,value]of SKILLBASE){if(Object.keys(skills).some(k=>normalize(k.split('(')[0])===normalize(name)))continue;skills[name]=value==='DES2'?Math.floor(c.stats.DES/2):value==='EDU'?c.stats.EDU:value;}
- for(const [name,val]of Object.entries(skills).sort((a,b)=>a[0].localeCompare(b[0],'es'))){const b=button(name,()=>roll(name,val));b.dataset.trained=String(name in c.skills);b.dataset.skill=normalize(name);b.append(node('b',val+'%'),node('small',Math.floor(val/2)+' / '+Math.floor(val/5)),node('span',name in c.skills?'Entrenada':'Base','skill-kind'));$('#skills').append(b);}
+ const quick=$('#pendingSkills');quick.replaceChildren();quick.hidden=!pending;if(pending)for(const [name,val]of Object.entries(skills))if(canUseSkill({skills:pending.checkSkills||[pending.check]},name))quick.append(button('Evaluar '+name+' · '+val+'%',()=>roll(name,val)));
+ for(const [name,val]of Object.entries(skills).sort((a,b)=>a[0].localeCompare(b[0],'es'))){const b=button(name,()=>roll(name,val));if(pending){const valid=canUseSkill({skills:pending.checkSkills||[pending.check]},name);b.disabled=!valid;b.classList.toggle('eligible-check',valid);}b.dataset.trained=String(name in c.skills);b.dataset.skill=normalize(name);b.append(node('b',val+'%'),node('small',Math.floor(val/2)+' / '+Math.floor(val/5)),node('span',name in c.skills?'Entrenada':'Base','skill-kind'));$('#skills').append(b);}
 }
 function filterSkills(){const q=normalize($('#skillSearch').value);for(const b of $$('#skills button'))b.hidden=!b.dataset.skill.includes(q)||($('#trainedOnly').checked&&b.dataset.trained!=='true');}
 $('#skillSearch').oninput=filterSkills;$('#trainedOnly').onchange=filterSkills;
 function rollLevel(r,v){if(r===1)return 'EVALUACIÓN EXCEPCIONAL';if(r==100||(v<50&&r>=96))return 'REVISIÓN NECESARIA';if(r<=Math.floor(v/5))return 'ANÁLISIS CONCLUYENTE';if(r<=Math.floor(v/2))return 'HALLAZGO SÓLIDO';if(r<=v)return 'ANÁLISIS FAVORABLE';return 'SIN CONCLUSIÓN';}
 function roll(label,val){
- const pending=user.gm?null:pendingFor(viewedId),id=uid(),r=1+Math.floor(Math.random()*100),ts=Date.now(),o=OPERATIVOS.find(x=>x.id===viewedId);
- const channel=pending?.ch||currentChannel,record={id,msg:'Revisión de '+label+': '+rollLevel(r,val),who:o.name,userId:user.id,gm:!!user.gm,t:'roll',label,val,roll:r,ts,ch:channel};const patch={['messages/'+id]:record};
-  currentChannel=channel;store.put(patch);$('#sheet').close();$('#chat').classList.add('open');buildSuggestions();
-  if(!user.gm&&(channel==='mecenas'||channel==='general'||channel.startsWith('priv_')))void (async()=>{await store.flush();await llamarMecenas(id);})();
+ const pending=user.gm?null:pendingFor(viewedId);if(pending&&!canUseSkill({skills:pending.checkSkills||[pending.check]},label))return;
+ const id=uid(),r=1+Math.floor(Math.random()*100),ts=Date.now(),o=OPERATIVOS.find(x=>x.id===viewedId);
+ const channel=pending?.ch||currentChannel,record={id,msg:'Revisión de '+label+': '+rollLevel(r,val),who:o.name,userId:user.id,gm:!!user.gm,t:'roll',label,val,roll:r,ts,ch:channel,mecenasMode:'script',...(pending?{checkId:pending.id}:{})};const patch={['messages/'+id]:record};
+  Object.assign(patch,scriptedReply(record,store.data));
+  currentChannel=channel;store.put(patch);selectedCheckId=null;$('#sheet').close();$('#chat').classList.add('open');buildSuggestions();
 }
 async function openMap(){
  if(mapInstance){mapInstance.invalidateSize();return;}if(loadingMap)return;loadingMap=true;
@@ -285,7 +281,7 @@ exports.SKILLBASE=SKILLBASE;
 "web/js/scenario.js":function(load,exports){
 const {oldPoint:oldPoint,sitePoint:sitePoint,planPoint:planPoint,corePoint:corePoint}=load("web/js/plan-coordinates.js");
 // Única fuente del escenario de juego. Seguridad inventada, no describe instalaciones reales.
-const CONFIG={ database:'https://veruela-89cec-default-rtdb.europe-west1.firebasedatabase.app', path:'/veruela_preparacion_v2', pollMs:3500, mecenasEndpoint:'https://mecenas-veruela.manrguezia.workers.dev' };
+const CONFIG={ database:'https://veruela-89cec-default-rtdb.europe-west1.firebasedatabase.app', path:'/veruela_preparacion_v2', pollMs:3500, mecenasMode:'script' };
 const MAP_TILES={url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'};
 const SECURITY_COLORS={camaras:'#ff758d',alarmas:'#ffc66e',rondas:'#ae9cff',garitas:'#8baeff',accesos:'#66e6a8',objetivos:'#fff2b6'};
 const site=sitePoint;
@@ -397,16 +393,17 @@ exports.oldPoint=oldPoint;
 exports.sitePoint=sitePoint;
 },
 "web/js/mecenas.js":function(load,exports){
+const {INTEL:INTEL,findIntel:findIntel}=load("web/js/mecenas-intel.js");
 // Guion local cerrado: no ejecuta peticiones externas, no usa un modelo de lenguaje.
 // Cada entrada puede editarse sin cambiar el chat ni el visor.
 const normalize=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const FAQ=[
- {id:'encargo',title:'¿Qué tenemos que llevarnos?',keys:['encargo','objetivo','robar','robo','piezas','llevarnos'],answer:'Tres piezas: «Los durmientes», «La luz que nace de la sombra» y el relicario colonial. Los dos lienzos están en la iglesia; el relicario, en la sala capitular. Nada más. Las quiero intactas.'},
- {id:'pago',title:'¿Cuál es el acuerdo económico?',keys:['pago','pagar','dinero','anticipo','cobrar','millón','reparto'],answer:'Un millón en total. El anticipo de cien mil ya está en manos de Marina. El resto, contra entrega de las tres piezas intactas. El reparto interno es cosa vuestra.'},
- {id:'plazo',title:'¿Cuándo se desmonta la exposición?',keys:['plazo','desmontaje','desmonta','fecha','mes','cuando'],answer:'Antes del desmontaje de final de mes. La fecha concreta la confirmaré con Control. No deis por hecho que las vitrinas estarán desconectadas.'},
- {id:'camaras',title:'¿Qué cámaras recoge el informe?',keys:['camaras','camara','vigilancia','cctv','cobertura','grabacion','graban'],answer:'El dossier contempla diez cámaras: portería, cuatro esquinas del claustro, entrada de monjes, sala capitular, dos accesos al refectorio y plaza de la iglesia. Consulta la capa Cámaras; los abanicos son aproximados.'},
+ {id:'encargo',title:'¿Qué tenemos que llevarnos?',keys:['encargo','objetivo','robar','robo','piezas','llevarnos','llevamos','robamos','objetivos'],answer:'Tres piezas: «Los durmientes», «La luz que nace de la sombra» y el relicario colonial. Los dos lienzos están en la iglesia; el relicario, en la sala capitular. Nada más. Las quiero intactas.'},
+ {id:'pago',title:'¿Cuál es el acuerdo económico?',keys:['pago','pagar','dinero','anticipo','cobrar','millón','reparto','cobramos','pagan','pagas','cobro','adelanto','remuneracion','cuanto nos pagas'],answer:'Un millón en total. El anticipo de cien mil ya está en manos de Marina. El resto, contra entrega de las tres piezas intactas. El reparto interno es cosa vuestra.'},
+ {id:'plazo',title:'¿Cuándo se desmonta la exposición?',keys:['plazo','desmontaje','desmonta','fecha','mes','limite','fecha limite','nochevieja','cuando es el robo','cuando termina','cuando acaba','fin de exposicion','31 de diciembre'],answer:'La exposición finaliza el 31 de diciembre de 2026. La operación será esa misma noche, del 31 de diciembre al 1 de enero. El desmontaje será posterior al cierre; su horario no está confirmado. El fin de la muestra no desconecta las protecciones.'},
+ {id:'camaras',title:'¿Qué cámaras recoge el informe?',keys:['camaras','camara','cctv','cobertura','grabacion','graban'],answer:'El dossier contempla diez cámaras: portería, cuatro esquinas del claustro, entrada de monjes, sala capitular, dos accesos al refectorio y plaza de la iglesia. Consulta la capa Cámaras; los abanicos son aproximados.'},
  {id:'alarmas',title:'¿Qué alarmas hay previstas?',keys:['alarmas','alarma','sensor','sensores','vitrina','contactos','movimiento'],answer:'Seis avisos propuestos: portería, puerta capitular, vitrina del relicario, iglesia, refectorio y almacén. Son independientes de las cámaras. Quitar una capa del plano no cambia su estado.'},
- {id:'rondas',title:'¿Cómo se organiza la vigilancia?',keys:['rondas','ronda','guardias','guardia','vigilantes','vigilante','turnos','horarios'],answer:'El informe indica dos vigilantes de día y uno de noche. El nocturno parte de portería y realiza rondas orientativas cada hora, de 23:00 a 07:00. No toméis esa rutina como garantía de paso libre.'},
+ {id:'rondas',title:'¿Cómo se organiza la vigilancia?',keys:['rondas','ronda','guardias','guardia','vigilantes','vigilante','turnos','horarios','vigilancia','vigila','vigilan'],answer:'El informe indica dos vigilantes de día y uno de noche. El nocturno parte de portería y realiza rondas orientativas cada hora, de 23:00 a 07:00. No toméis esa rutina como garantía de paso libre.'},
  {id:'garitas',title:'¿Dónde están los puestos?',keys:['garita','garitas','puestos','caseta','casetas'],answer:'El puesto principal está en portería. El plano añade una caseta auxiliar junto a las dependencias; su ocupación está por confirmar. No presupongáis otro vigilante nocturno.'},
  {id:'accesos',title:'¿Qué accesos podemos estudiar?',keys:['accesos','acceso','puertas','puerta','cerradura','cerraduras','entrada'],answer:'Estudiad las puertas señaladas en verde y sus conexiones con el claustro. Elegid una alternativa y anotad sus dudas en el plan. No deis por confirmado un acceso sin contrastar la información.'},
  {id:'iglesia',title:'¿Qué hay en la iglesia?',keys:['iglesia','lienzos','durmientes','luz','cuadros','pinturas'],answer:'En la iglesia están los dos lienzos del encargo. El plano distingue los marcadores V01 y V02. Documentad dimensiones y protección antes de decidir quién los transportará.'},
@@ -414,36 +411,153 @@ const FAQ=[
  {id:'refectorio',title:'¿Hay objetivos en el refectorio?',keys:['refectorio','farruca','triptico'],answer:'El refectorio forma parte de la exposición, pero ninguna de sus obras está en el encargo. Consideradlo al estudiar conexiones y personal; no añadáis piezas a la lista.'},
  {id:'claustro',title:'¿Qué conecta el claustro?',keys:['claustro','galeria','galerias','patio'],answer:'El claustro conecta las principales dependencias del núcleo antiguo. Comparad las capas de cámaras y rondas sobre sus galerías. El patio central está abierto.'},
  {id:'sacristia',title:'¿Qué sabemos de la sacristía?',keys:['sacristia','palacio','abacial','ciego','ciegos'],answer:'No consta cámara propia en la sacristía ni en el palacio abacial dentro de este dossier. Eso no confirma ausencia de cobertura desde otra zona. Dejadlo como dato por contrastar.'},
- {id:'nuevo',title:'¿Para qué sirve el monasterio nuevo?',keys:['hospederia','nuevo','anexos'],answer:'Es un conjunto auxiliar con patio oriental. No contiene piezas del encargo. El uso de hospedería se ha asignado de forma provisional en el modelo.'},
+ {id:'nuevo',title:'¿Para qué sirve el monasterio nuevo?',keys:['hospederia','nuevo','anexos'],answer:'Es un conjunto auxiliar con alas y patios junto al núcleo antiguo. No contiene piezas del encargo. El uso de hospedería se ha asignado de forma provisional en el modelo.'},
  {id:'personal',title:'¿Quién trabaja en la exposición?',keys:['personal','empleados','empleado','limpieza','conservadora','comisaria','mantenimiento'],answer:'El informe recoge comisaria, conservación, taquilla, limpieza, mantenimiento y vigilancia. Preparad qué dato necesitáis de cada función. Coordinad cualquier contacto con Control.'},
  {id:'equipo',title:'¿Qué deberíamos preparar?',keys:['equipo','material','herramientas','embalaje','embalajes','proteccion','transportar'],answer:'Protección de conservación para dos lienzos y una pieza pequeña, capacidad de transporte y responsables claros. Anotad el material pendiente; no deis por adquiridos recursos que nadie ha confirmado.'},
  {id:'logistica',title:'¿Cómo organizamos el traslado?',keys:['traslado','coche','vehiculo','ruta','base','reunion','logistica'],answer:'Acordad en el plan el punto de reunión, quién conduce y una alternativa si hay que aplazar. No iniciéis el traslado hasta haber cerrado la preparación.'},
- {id:'fase',title:'¿Qué falta antes de salir?',keys:['empezar','salimos','viaje','presencial','preparacion','partida','listos','terminar'],answer:'Por aquí cerramos la preparación: información, responsabilidades, equipo y dudas. Cuando esté todo confirmado, acordaremos la salida.'},
+ {id:'fase',title:'¿Qué falta antes de salir?',keys:['empezar','salimos','viaje','presencial','preparacion','partida','listos','terminar'],answer:'Por aquí cerramos la preparación: información, responsabilidades, equipo y dudas. La salida se prepara para la noche del 31 de diciembre de 2026.'},
  {id:'identidad',title:'¿Quién está detrás del encargo?',keys:['identidad','comprador','motivos','quien eres','tu nombre','para quien'],answer:'Soy vuestro contacto. El comprador no forma parte de la conversación. Las condiciones del encargo sí.'},
  {id:'saludo',title:'Hola, Mecenas',keys:['hola','buenas','saludos','gracias'],answer:'Os leo. Concretad la duda: piezas, seguridad, personal o preparación.'},
- {id:'analisis',title:'Quiero analizar el dossier de cámaras',keys:['analizar','analisis','investigar','investigacion','comprobar','estudiar'],answer:'Revisa el dossier desde tu perfil, con la competencia Descubrir. Necesito una evaluación documental antes de confirmar nada más.',check:{skill:'Descubrir',success:'El documento no confirma cobertura total entre las dependencias. Marca esa incertidumbre y prepara una alternativa; la ausencia de un dispositivo dibujado no demuestra que el paso esté libre.',failure:'La documentación no permite confirmar nada más. Anotad la duda y pedid a Control otra fuente.'}},
+ {id:'analisis',title:'Quiero analizar el dossier de cámaras',keys:['analizar','analisis','investigar','investigacion','comprobar','estudiar'],answer:'Revisa el dossier desde tu perfil, con la competencia Descubrir. Necesito una evaluación documental antes de confirmar nada más.',check:{skill:'Descubrir',difficulty:'regular',success:'El documento no confirma cobertura total entre las dependencias. Marca esa incertidumbre y prepara una alternativa; la ausencia de un dispositivo dibujado no demuestra que el paso esté libre.',failure:'La documentación no permite confirmar nada más. Anotad la duda y pedid a Control otra fuente.'}},
+ {id:'seguridad',title:'Resumen de seguridad',keys:['seguridad','sistemas de seguridad'],answer:'El dossier distingue cámaras, alarmas, rondas y puestos. Puedo resumir cada apartado. El atlas permite estudiarlos por separado; atenuarlos no los desconecta.'},
+ {id:'exposicion',title:'¿Qué exposición es?',keys:['exposicion','general y el sonador','muestra'],answer:'«El general y el soñador» reúne el legado Polavieja · Valenzuela y finaliza el 31 de diciembre de 2026. Las piezas del encargo son dos pinturas en la iglesia y un relicario en la Sala Capitular.'},
+ {id:'dimensiones',title:'¿Qué dimensiones tienen las piezas?',keys:['dimensiones','medidas','peso','pesan','tamano','ficha tecnica'],answer:'La documentación disponible aquí no confirma medidas, peso ni estado de conservación. Dejad esa petición para Control antes de cerrar los embalajes.'},
+ {id:'planos',title:'¿Dónde están los planos y fotografías?',keys:['plano','planos','fotografias','fotos','imagenes','mapa','3d'],answer:'En el atlas, seleccionad una estancia para abrir sus fotografías. «Plano original» permite ampliar la planta documental. Las alturas son aproximadas y algunas asignaciones de uso están pendientes de confirmar.'},
+ {id:'scriptorium',title:'¿Qué es el scriptorium?',keys:['scriptorium','sala de monjes'],answer:'La sala de monjes está junto al ala del capítulo. El atlas muestra sus seis tramos y columnas. Ninguna de las tres piezas del encargo está asignada allí.'},
+ {id:'dormitorio',title:'¿Qué hay en el dormitorio?',keys:['dormitorio','salon de reyes'],answer:'El dormitorio ocupa la planta superior del ala del capítulo. Atenuadlo en el atlas para estudiar las dependencias de abajo. No tiene piezas del encargo.'},
+ {id:'cocina',title:'¿Qué sabemos de la cocina?',keys:['cocina'],answer:'La cocina es contigua al refectorio. El atlas permite comparar sus accesos y conexiones. No hay piezas del encargo asignadas a ella.'},
+ {id:'cilla',title:'¿Qué es la cilla?',keys:['cilla','almacen'],answer:'La cilla es el antiguo almacén junto al lado de los conversos. En el dossier tiene un aviso de apertura; su estado requiere confirmación.'},
+ {id:'ayuda',title:'¿Sobre qué puedo preguntar?',keys:['ayuda','opciones','que sabes','que puedo preguntar'],answer:'Puedo aclarar el encargo y la noche del 31 de diciembre. También puedo contrastar fichas de personal, proveedores, residentes y dispositivos: pedid una persona, una función, C01–C10 o A01–A06. Esas fichas requieren una evaluación desde vuestro perfil.'}
+
 ];
-function answerQuestion(text){
+const getEntry=id=>FAQ.find(f=>f.id===id)||INTEL.find(f=>f.id===id);
+function answerQuestion(text,context={}){
  const q=normalize(text),words=new Set(q.split(' '));
+ const entry=id=>FAQ.find(f=>f.id===id);
  if(!q)return {id:'empty',answer:'Formula una pregunta sobre el encargo.'};
  if(/\b(desactivo|desactivar|anulo|anular|hackeo|hackear|forzar|forzamos|entramos|entro|saltamos|escalar|disparo)\b/.test(q))return {id:'mesa',answer:'Anótalo como propuesta del plan. Primero necesito que cerréis la preparación. No daré por ejecutada una acción desde este canal.'};
- // Los temas no incluidos nunca se completan con texto inventado.
- if(/\b(instrucciones|prompt|ignora|olvida|sistema|secreto)\b/.test(q)&&!words.has('alarmas'))return {id:'limite',answer:'Me ciño al dossier del encargo. Pregunta por las piezas, la seguridad prevista o la preparación.'};
- if(/\b(analizar|analisis|investigar|estudiar|comprobar)\b/.test(q))return FAQ.find(f=>f.id==='analisis');
- const ranked=FAQ.map(f=>({f,score:f.keys.reduce((n,k)=>n+(normalize(k).includes(' ')?(' '+q+' ').includes(' '+normalize(k)+' ')?4:0:words.has(normalize(k))?2:0),0)})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score);
- if(!ranked.length)return {id:'fallback',answer:'No tengo ese dato en el dossier. Déjalo en Dudas pendientes para Control. Puedo aclarar piezas, cámaras, alarmas, rondas, accesos y equipo.'};
- return ranked[0].f;
+ if(/\b(prompt|ignora|olvida|secreto|sobrenatural|fantasma|monstruo|campana anterior)\b/.test(q))return {id:'limite',answer:'Me ciño al dossier del encargo. Pregunta por las piezas, la seguridad prevista o la preparación.'};
+ if(/\b(he sacado|he obtenido|mi tirada|resultado de la tirada)\b/.test(q))return {id:'resultado-manual',answer:'La revisión se completa desde tu ficha, con la competencia solicitada. Un resultado escrito en el chat no sustituye esa evaluación.'};
+ const dossier=findIntel(q,context.topic);if(dossier)return dossier;
+ if(/\b(analizar|analisis|investigar|investigacion|comprobar)\b/.test(q)&&/\b(camaras|camara|cobertura|dossier|documentacion|informe|vigilancia)\b/.test(q))return entry('analisis');
+ const exact=FAQ.find(f=>normalize(f.title)===q);if(exact)return exact;
+ const ranked=FAQ.filter(f=>f.id!=='analisis').map(f=>({f,score:f.keys.reduce((n,k)=>n+(normalize(k).includes(' ')?(' '+q+' ').includes(' '+normalize(k)+' ')?6:0:words.has(normalize(k))?2:0),0)})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score);
+ if(!ranked.length)return {id:'fallback',answer:'No tengo ese dato confirmado en el dossier. Déjalo en Dudas pendientes para Control. Puedo aclarar piezas, cámaras, alarmas, rondas, accesos y equipo.'};
+ // Un saludo no debe desplazar una pregunta; las consultas ambiguas no revelan datos extra.
+ const substantive=ranked.filter(r=>r.f.id!=='saludo');const matches=substantive.length?substantive:ranked;
+ if(matches.length>1&&matches[0].score===matches[1].score){
+  if(/\by\b/.test(q))return {id:'varios',answer:matches.slice(0,2).map(r=>r.f.answer).join('\n\n')};
+  return {id:'aclarar',answer:'Concreta la consulta: «'+matches[0].f.title+'» o «'+matches[1].f.title+'».'};
+ }
+ return matches[0].f;
 }
+function allowedSkills(check){return check?.skills||[check?.skill].filter(Boolean);}
+function canUseSkill(check,label){return allowedSkills(check).some(s=>normalize(s)===normalize(label));}
 function resolveCheck(entry,roll){
- if(!entry?.check||normalize(roll.label)!==normalize(entry.check.skill))return null;
- const success=roll.roll===1||(roll.roll<=roll.val&&!(roll.val<50&&roll.roll>=96)&&roll.roll<100);
- return {id:'resultado-'+entry.id,answer:success?entry.check.success:entry.check.failure};
+ if(!entry?.check||!canUseSkill(entry.check,roll.label))return null;
+ const r=roll.roll,v=roll.val;if(!Number.isInteger(r)||r<1||r>100||!Number.isInteger(v)||v<0||v>100)return null;
+ const required=entry.check.difficulty==='dificil'?2:entry.check.difficulty==='extremo'?3:1;
+ const fumble=r===100||(v<50&&r>=96);
+ const grade=r===1?4:fumble?-1:r<=Math.floor(v/5)?3:r<=Math.floor(v/2)?2:r<=v?1:0;
+ const succeeded=grade>=required,improved=succeeded&&grade>required;
+ const answer=succeeded?entry.check.success+(improved&&entry.check.improvement?'\n\n'+entry.check.improvement:''):entry.check.failure;
+ return {id:'resultado-'+entry.id,answer,succeeded,grade,improved};
 }
 
 exports.normalize=normalize;
 exports.FAQ=FAQ;
+exports.getEntry=getEntry;
 exports.answerQuestion=answerQuestion;
+exports.allowedSkills=allowedSkills;
+exports.canUseSkill=canUseSkill;
 exports.resolveCheck=resolveCheck;
+},
+"web/js/mecenas-intel.js":function(load,exports){
+// Contenido de ficción para el escenario. Ninguna ficha describe personal o seguridad reales.
+// Los correos .invalid y las extensiones internas son atrezzo y no se deben usar para contactar.
+const failure='No puedo dar ese dato por contrastado. Anota la duda y solicita a Control otra fuente antes de volver a revisar esta ficha.';
+function file(id,title,keys,skills,difficulty,success,improvement,source){
+ return {id,title,keys,source,answer:'Hay una ficha pendiente de contraste: '+title+'.',check:{skill:skills[0],skills,difficulty,success,improvement,failure}};
+}
+const staff=[
+ ['aurora','Aurora Cebollero','directora',['directora','direccion','aurora','cebollero'],'direccion','201','Autoriza permisos de uso del conjunto y recibe informes de la exposición. Exige solicitudes por escrito.','Coordina a Nieves Aznárez y a Nuria Calvo. Respeta el criterio de Berta Lerín sobre conservación.','No firma una excepción que no lleve responsable identificado.'],
+ ['nieves','Nieves Aznárez','coordinadora de visitantes',['nieves','aznarez','visitantes','taquilla'],'visitantes','202','Lleva reservas, grupos y reclamaciones. Puede confirmar aforos previstos, no permisos de servicio.','Trabaja estrechamente con Celia Monreal. Consulta a Aurora antes de admitir grupos fuera de programa.','Prefiere resolver malentendidos discretamente para evitar una queja formal.'],
+ ['fermin','Fermín Latorre','responsable de mantenimiento',['fermin','latorre','jefe de mantenimiento','responsable de mantenimiento','mantenimiento'],'mantenimiento','211','Gestiona incidencias del edificio; las revisiones de electrónica se encargan a Nordia.','Es el tío de Julián Berges. Se enfada cuando Dani Cosculluela cambia un montaje sin avisarle.','Guarda copias de partes de reparación porque no confía en los resúmenes de los proveedores.'],
+ ['julian','Julián Berges','auxiliar de mantenimiento',['julian','berges','auxiliar de mantenimiento'],'servicios','212','Recibe material de mantenimiento y tramita albaranes; no autoriza acceso a las salas.','Sobrino de Fermín. Tiene pagos domésticos atrasados y busca horas extra, pero no ha aceptado ningún encargo irregular.','Le preocupa quedar como poco fiable ante su tío; un trato respetuoso ayuda más que una amenaza.'],
+ ['celia','Celia Monreal','guía principal',['celia','monreal','guia principal','guias'],'visitas','203','Conoce el discurso de la exposición y las reservas de visitas. Canaliza cambios de grupo a través de Nieves.','Amiga de Leire Solano desde un trabajo anterior. Discrepa con Amaya sobre cuánto simplificar las cartelas.','Suele recordar a quien pregunta por una obra concreta, más que a quien pregunta solo por el edificio.'],
+ ['amaya','Amaya Ferrer Loscos','comisaria',['amaya','ferrer','loscos','comisaria'],'comisariado','221','Responsable del catálogo y de la relación con los prestadores. Contacto profesional: amaya.ferrer@exposicion-veruela.invalid.','Trabajó con Berta Lerín en dos muestras anteriores. Mantiene una disputa presupuestaria con Dani por el desmontaje.','Quiere cerrar el 31 de diciembre sin incidencias y dejar un inventario impecable.'],
+ ['berta','Berta Lerín','conservadora',['berta','lerin','conservadora','conservacion'],'conservacion','222','Autoriza las condiciones de manipulación y revisa los informes de estado. Contacto profesional: berta.lerin@exposicion-veruela.invalid.','Confía en el criterio de Fermín sobre el edificio. Choca con Dani cuando se acortan plazos de embalaje.','Defiende que V02 se conserve con marco y trasera; no acepta promesas verbales sobre su protección.'],
+ ['dani','Dani Cosculluela','coordinador de montaje',['dani','cosculluela','montaje'],'montaje','223','Coordina a Trama Museografía y los bultos previstos para el desmontaje posterior al cierre.','Amaya le exige justificar los costes; Berta rechaza sus cambios cuando no incluyen conservación.','Trama le comunica cualquier cambio de personal antes de confirmarlo a la dirección.'],
+ ['iria','Iria Mena','mediadora cultural',['iria','mena','mediacion'],'mediacion','204','Lleva talleres y actividades divulgativas. No forma parte de la contrata de seguridad.','Celia revisa con ella los materiales de las visitas. Es amiga de Inés, la investigadora alojada.','Puede aclarar el calendario cultural si se le pregunta por una actividad concreta.'],
+ ['ramon','Ramón Escartín','enlace del ala de alojamiento',['ramon','escartin','enlace hotelero'],'alojamiento','301','Coordina las estancias vinculadas a la exposición y la relación con recepción.','Trabaja con Loreto Chueca; mantiene separadas las listas de alojados y las acreditaciones de la exposición.','Una reserva de habitación no equivale a permiso para entrar en las salas cerradas.'],
+ ['loreto','Loreto Chueca','responsable de recepción',['loreto','chueca','recepcionista','recepcion'],'recepcion','302','Custodia las reservas y recibe mensajes para los alojados a través de recepción.','Informa a Ramón sobre cambios de estancia y a Nieves sobre visitas solicitadas por huéspedes.','No entrega el directorio privado: admite dejar un mensaje identificado.'],
+ ['nuria','Nuria Calvo','coordinadora de vigilancia',['nuria','calvo','coordinadora de vigilancia','jefa de seguridad'],'vigilancia','231','Gestiona los partes y la asignación de servicio. Las consultas se tramitan por coordinación, no por teléfonos particulares.','Confía en Sabino para los cierres y exige a Leire que registre las incidencias con visitantes.','Tras un desacuerdo pide que todo quede en un parte; no negocia excepciones por amistad.'],
+ ['sabino','Sabino Gadea','vigilante nocturno',['sabino','gadea','guardia de noche','guardia nocturno','vigilante nocturno'],'coordinacion-nocturna','232','Está asignado al servicio nocturno del 31 de diciembre. Su contacto pasa por coordinación; no consta móvil personal.','Conoce a Fermín desde hace años. Nuria valora que comunique las incidencias antes de actuar por su cuenta.','Prefiere pedir apoyo y documentar una situación dudosa antes que enfrentarse a alguien.'],
+ ['leire','Leire Solano','vigilante de atención al público',['leire','solano','vigilante de dia'],'coordinacion-diurna','233','Presta servicio durante la apertura; atiende incidencias del circuito expositivo.','Amiga de Celia Monreal. La amistad no le permite autorizar accesos ni omitir un parte.','Recuerda las conversaciones relacionadas con el montaje y la conservación.']
+];
+const providers=[
+ ['trama','Trama Museografía SL',['trama','museografia','peanas','paneles'],'Lucía Royo','coordinacion@trama-museografia.invalid','Peanas, paneles y embalajes. Coordinación: Dani Cosculluela.','El 31 de diciembre solo tiene prevista la confirmación del inventario de embalajes. El desmontaje comienza después del cierre de la muestra, ya en enero; la franja concreta sigue pendiente.','Lucía exige que Dani confirme cualquier sustitución de operario.'],
+ ['nordia','Nordia Sistemas Ibérica',['nordia','instalador','contrata tecnica'],'Iván Serrano','servicio@nordia-sistemas.invalid','Mantenimiento de vídeo y detección; relación técnica con Fermín y Nuria.','La orden de mantenimiento no incluye una desconexión general por fin de exposición. No consta intervención presencial programada para la noche del 31.','Iván entrega informes a Nuria y copias de mantenimiento a Fermín; no decide quién accede al recinto.'],
+ ['brillo','Brillo Norte',['brillo','empresa de limpieza','limpieza'],'Sonia Perales','turnos@brillo-norte.invalid','Limpieza de espacios de público; coordinación de servicio con Nieves.','La hoja del 31 contempla una revisión al terminar la visita pública. Una incidencia requiere autorización antes de cambiar el servicio.','Sonia no acepta que otro contratista amplíe su encargo por una petición verbal.'],
+ ['ribera','Ribera Frío',['ribera','catering','comida','bebida'],'Álex Cebrián','eventos@ribera-frio.invalid','Catering de actos culturales; contacto con Iria Mena.','No figura una fiesta de Nochevieja abierta al público en el programa de clausura. Cualquier servicio adicional tendría que constar en una orden nueva.','Álex y Dani han compartido montajes; no pertenecen a la misma empresa.'],
+ ['jardin','Moncayo Jardín',['moncayo jardin','jardineria','jardinero'],'Héctor Sanz','pedidos@moncayo-jardin.invalid','Suministros de jardinería; enlace con mantenimiento.','Su orden está limitada a espacios exteriores. No incluye trabajos dentro de la exposición ni una entrega nocturna el 31.','Héctor pide siempre la firma de recepción del encargado, aunque conozca al resto del personal.'],
+ ['archivo','Archivo Claro',['archivo claro','reprografia','catalogo','catalogos'],'Alicia Soria','edicion@archivo-claro.invalid','Reprografía y pruebas del catálogo; trabaja con Amaya.','Debe entregar la relación de erratas antes del cierre de la exposición. Su documentación editorial no contiene el esquema de seguridad.','Alicia comparte consultas de catálogo con Inés Valcárcel, la investigadora alojada.'],
+ ['cierzo','Cierzo Transporte de Arte',['cierzo transporte','transportista','transporte de arte'],'Pablo Narvión','coordinacion@cierzo-arte.invalid','Transporte especializado posterior a la clausura; coordinación con Berta y Dani.','No hay retirada de piezas prevista antes de que finalice la exposición el 31 de diciembre. La expedición será posterior; Control confirmará la fecha.','El Mecenas mantiene el encargo dentro del recinto: no contempla actuar sobre un transporte en marcha.']
+];
+const residents=[
+ ['ines','Inés Valcárcel',['ines','valcarcel','investigadora alojada'],'Investigadora del catálogo, alojada en el ala de huéspedes hasta el 2 de enero.','Mensajes a través de recepción, extensión 311; ines.valcarcel@alojamiento-veruela.invalid.','Amiga de Iria Mena y colaboradora de Alicia Soria. Trabaja con fuentes del catálogo, no con la documentación de seguridad.'],
+ ['joel','Joel Rivas',['joel','rivas','fotografo alojado'],'Fotógrafo encargado del registro de la muestra, con estancia hasta el 1 de enero.','Mensajes a través de recepción, extensión 312; joel.rivas@alojamiento-veruela.invalid.','Dani contrata su trabajo y Berta valida cómo documenta las piezas. Ha discutido con Dani por los plazos de entrega.'],
+ ['elvira','Elvira Pardo',['elvira','pardo','cuidadora residente','residente permanente'],'Cuidadora residente de los espacios de alojamiento; ocupa una dependencia de servicio.','Mensajes a través de recepción, extensión 313; elvira.pardo@alojamiento-veruela.invalid.','Ramón organiza sus encargos y Fermín resuelve las incidencias de su vivienda. No lleva las llaves de la exposición.'],
+ ['pilar','Pilar Uceda',['pilar','uceda','archivera alojada'],'Archivera invitada para revisar documentación de la colección; estancia hasta el 2 de enero.','Mensajes a través de recepción, extensión 314; pilar.uceda@alojamiento-veruela.invalid.','Amaya solicitó su visita. Respeta a Inés, aunque discrepan sobre la atribución de dos documentos del catálogo.']
+];
+const INTEL=[
+ file('personal-directorio','Directorio del personal',['personal','empleados','plantilla','quien trabaja','nombres del personal'],['Informática','Buscar libros'],'regular',staff.map(p=>p[1]+' — '+p[2]).join('\n'),'Puedes pedir la ficha de una persona por su nombre o función para contrastar contacto y relaciones.','Directorio de coordinación de la exposición'),
+ ...staff.map(p=>file('persona-'+p[0],'Personal · '+p[2],p[3],['Informática','Buscar libros'],'regular',p[1]+' · '+p[2]+'. '+p[6]+'\nCanal profesional: '+p[4]+'@exposicion-veruela.invalid · extensión interna '+p[5]+'.\nRelaciones: '+p[7],p[8],'Ficha de coordinación '+p[1])),
+ file('relaciones-personal','Relaciones entre el personal',['relaciones','relacion','se conocen','amigos','familia','parentesco','disputa','enemistad','motivos','motivaciones'],['Psicología'],'dificil','Amaya y Berta han trabajado juntas; las dos discuten con Dani por plazos y conservación. Fermín es tío de Julián. Celia y Leire son amigas. Ramón y Loreto separan las reservas de alojamiento de las acreditaciones de exposición.','Julián busca horas extra por deudas domésticas. Berta prioriza la integridad de las obras; Amaya, el cierre sin incidencias; Nuria, la trazabilidad de los partes. Ninguno ha ofrecido colaborar con el encargo.','Cruce de entrevistas y correspondencia'),
+ file('proveedores-directorio','Directorio de proveedores',['proveedor','proveedores','contratas','empresas del evento'],['Contabilidad','Informática'],'regular',providers.map(p=>p[1]+' — '+p[3]+' · '+p[4]).join('\n'),'Pide la ficha de una empresa para contrastar su función, relaciones y orden de servicio del 31 de diciembre.','Relación administrativa de contratistas'),
+ ...providers.map((p,i)=>file('proveedor-'+p[0],'Proveedor · '+['Museografía','Mantenimiento electrónico','Limpieza','Catering','Jardinería','Catálogo','Transporte de arte'][i],p[2],['Contabilidad','Informática'],'dificil',p[1]+'. Responsable: '+p[3]+'. Contacto: '+p[4]+'.\n'+p[5]+'\n'+p[6],p[7],'Orden y albaranes de '+p[1])),
+ file('residentes-directorio','Personas alojadas y residentes',['habitantes','residentes','alojados','huespedes','quien vive','quienes viven','monjes','frailes'],['Buscar libros','Informática'],'regular','La relación del 31 de diciembre incluye a Inés Valcárcel, Joel Rivas, Elvira Pardo y Pilar Uceda. Sus fichas distinguen huéspedes y personal residente. No consta una comunidad religiosa residente en esta relación.','Las estancias son gestionadas por Ramón Escartín y Loreto Chueca. La relación de alojamiento no acredita la posición de nadie en cada momento.','Relación de estancias del 31 de diciembre'),
+ ...residents.map((p,i)=>file('residente-'+p[0],'Alojamiento · expediente '+(i+1),p[2],['Buscar libros','Psicología'],'regular',p[1]+'. '+p[3]+'\n'+p[4]+'\n'+p[5],'La reserva confirma la estancia, no sus movimientos durante la noche. Cualquier presencia puntual sigue pendiente de contraste.','Ficha de estancia '+p[1])),
+ file('video-tecnico','Documentación técnica de vídeo',['modelo de camara','modelos de camaras','caracteristicas de camaras','mirador','grabador','retencion','resolucion','poe','cctv tecnico'],['Electrónica','Informática'],'dificil','El inventario contiene diez Mirador M12-IP4: cámaras fijas IP de 4 MP, óptica de 2,8 mm, alimentación PoE y modo día/noche. No registran audio. El grabador Mirador Archivo-16 tiene dieciséis canales y retención documental prevista de catorce días.','La retención es una previsión de capacidad, no una prueba de que todos los archivos estén disponibles. El vídeo y las alarmas usan registros diferenciados; el modelo 3D no calcula oclusiones reales.','Inventario audiovisual del escenario'),
+ file('alarmas-tecnico','Arquitectura de alarmas',['modelos de alarmas','central de alarmas','centralita','centinela','onix','arca 4','faro central','sistemas de alarma'],['Electrónica','Informática'],'dificil','ONIX Arca 4 reúne los eventos de seis avisos A01–A06. Centinela 24 separa las particiones de sala. Faro Central recibe las incidencias de comunicación. Los registros distinguen apertura, presencia, manipulación e incidencias del propio sistema.','El cierre de la exposición no equivale a apagar los avisos: el 31 de diciembre las zonas continúan bajo su procedimiento de cierre. Un aviso de vitrina no es una simple indicación visual local.','Memoria de integración del escenario'),
+ file('turno-nochevieja','Asignación de vigilancia del 31 de diciembre',['quien vigila el 31','turno del 31','guardia en nochevieja','guardias en nochevieja','vigilancia de nochevieja'],['Buscar libros','Descubrir'],'dificil','La asignación nocturna del 31 de diciembre corresponde a Sabino Gadea, bajo coordinación de Nuria Calvo. El expediente mantiene un vigilante nocturno y las rondas orientativas del dossier.','La asignación no certifica recorridos ni minutos libres. Las incidencias de clausura pueden alterar la rutina.','Hoja de asignación de Nochevieja')
+];
+const cameraZones=['Portería','Claustro · esquina 1','Claustro · esquina 2','Claustro · esquina 3','Claustro · esquina 4','Entrada de monjes','Puerta de la Sala Capitular','Refectorio · galería','Refectorio · cocina','Plaza de la iglesia'];
+for(let i=0;i<cameraZones.length;i++){
+ const id='C'+String(i+1).padStart(2,'0');
+ INTEL.push(file('camara-'+id.toLowerCase(),'Ficha de '+id+' · '+cameraZones[i],[id.toLowerCase()],['Electrónica','Informática'],'regular',id+' · '+cameraZones[i]+'. Mirador M12-IP4 fija, 4 MP, alimentación PoE y modo día/noche; sin audio. Canal '+(i+1)+' del grabador Archivo-16. Responsable técnico: Nordia Sistemas Ibérica.','El abanico del atlas representa una orientación aproximada. Esta ficha no demuestra cobertura completa ni confirma que un paso quede fuera de imagen.','Inventario audiovisual · '+id));
+}
+const alarms=[
+ ['A01','Portería','Centinela C-20','Contacto magnético de apertura de hoja y señal de incidencia de carcasa.','Nuria Calvo recibe el parte; Nordia mantiene el equipo.'],
+ ['A02','Puerta de la Sala Capitular','Centinela C-20','Contacto de apertura de la puerta, con registro diferenciado de la vitrina interior.','Abrir la sala y manipular la vitrina son eventos distintos.'],
+ ['A03','Vitrina del relicario','Klarvit V90 / ART TAG Lumen','Supervisa apertura de vitrina, vibración y variación de carga. El expediente los trata como una protección compuesta.','Berta Lerín valida las condiciones de conservación; Nordia mantiene la electrónica. Una autorización de manipulación no se deduce de una acreditación de visitante.'],
+ ['A04','Iglesia','Centinela D-24','Detector de presencia de doble tecnología, infrarrojo pasivo y microondas, asociado a la partición de la iglesia.','Su historial es independiente de la grabación de vídeo de la sala.'],
+ ['A05','Refectorio','Centinela D-24','Detector de presencia de doble tecnología asociado a la partición del refectorio.','La ficha de exposición y la ficha del sensor son documentos diferentes.'],
+ ['A06','Cilla / almacén','Centinela C-20','Contacto de apertura del acceso al almacén, con registro en ONIX Arca 4.','Una petición de material no constituye permiso para acceder al almacén.']
+];
+for(const [id,zone,model,description,detail]of alarms)INTEL.push(file('alarma-'+id.toLowerCase(),'Ficha de '+id+' · '+zone,[id.toLowerCase()],['Electrónica'],'dificil',id+' · '+zone+'. Modelo: '+model+'. '+description,detail,'Inventario de detección · '+id));
+
+const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const has=(q,k)=>(' '+q+' ').includes(' '+norm(k)+' ');
+function findIntel(q,contextTopic){
+ const byId=id=>INTEL.find(e=>e.id===id);
+ const ids=[...q.matchAll(/\b([ca])\s?(0?[1-9]|10)\b/g)].map(m=>(m[1]==='c'?'camara-':'alarma-')+m[1]+m[2].padStart(2,'0'));
+ if(ids.length){const entries=[...new Set(ids)].map(byId).filter(Boolean);if(entries.length>1)return {id:'aclarar-ficha',answer:'Pide una ficha cada vez: '+entries.map(e=>e.title).join('; ')+'.'};if(entries.length)return entries[0];}
+ if(/\b(relacion|relaciones|parentesco|amigos|familia|se conocen|disputa|enemistad|motivaciones)\b/.test(q))return byId('relaciones-personal');
+ const people=INTEL.filter(e=>/^(persona|residente|proveedor)-/.test(e.id)&&e.keys.some(k=>has(q,k)));
+ if(people.length>1)return {id:'aclarar-persona',answer:'Pide una ficha cada vez: '+people.map(e=>e.title).join('; ')+'.'};
+ if(people.length)return people[0];
+ if(/\b(vitrina|relicario|p07)\b/.test(q)&&/\b(tecnic[a-z]*|protege|proteccion|modelo|sensor[a-z]*|alarma[a-z]*|vibracion|peso)\b/.test(q))return byId('alarma-a03');
+ if(/\b(camara[a-z]*|cctv|video)\b/.test(q)&&/\b(tecnic[a-z]*|modelo[a-z]*|marca[a-z]*|tipo[a-z]*|caracteristica[a-z]*|resolucion|retencion|grabador|audio|optica|alimentacion|graban|graba|grabaciones|grabacion|grabar|guardan|almacenan)\b/.test(q))return byId('video-tecnico');
+ if(/\b(alarma[a-z]*|sensor[a-z]*)\b/.test(q)&&/\b(tecnic[a-z]*|modelo[a-z]*|marca[a-z]*|tipo[a-z]*|caracteristica[a-z]*|central|funcionan|funciona|comunicaciones)\b/.test(q))return byId('alarmas-tecnico');
+ const categories=INTEL.filter(e=>!e.id.startsWith('persona-')&&!e.id.startsWith('residente-')&&!e.id.startsWith('proveedor-')&&!e.id.startsWith('camara-')&&!e.id.startsWith('alarma-'));
+ const match=categories.find(e=>e.keys.some(k=>has(q,k)));if(match)return match;
+ if(contextTopic&&/^(y |su |sus |el contacto|el telefono|el correo)/.test(q)&&/\b(contacto|telefono|correo|email|datos|ficha)\b/.test(q))return byId(contextTopic)||null;
+ return null;
+}
+
+exports.INTEL=INTEL;
+exports.findIntel=findIntel;
 },
 "web/js/store.js":function(load,exports){
 const {CONFIG:CONFIG}=load("web/js/scenario.js");
@@ -623,6 +737,52 @@ exports.PLAN_IMAGE=PLAN_IMAGE;
 exports.ZONE_PHOTOS=ZONE_PHOTOS;
 exports.mediaForZone=mediaForZone;
 exports.createRoomGallery=createRoomGallery;
+},
+"web/js/mecenas-script.js":function(load,exports){
+const {getEntry:getEntry,answerQuestion:answerQuestion,resolveCheck:resolveCheck,allowedSkills:allowedSkills}=load("web/js/mecenas.js");
+const SCRIPT_VERSION='guion-2';
+const records=data=>Object.values(data.messages||{}).filter(m=>m&&(m.epoch||'initial')===(data.epoch||'initial'));
+function pendingCheck(data,userId,channel){
+ return records(data).filter(m=>m.check&&m.requester===userId&&m.ch===channel&&!data.messages?.['resolved_'+m.id]).sort((a,b)=>a.ts-b.ts).at(-1);
+}
+function reply(message,id,answer,extra={}){
+ return {id,msg:answer,who:'Mecenas',userId:'mecenas',gm:false,bot:true,t:'text',ch:message.ch,ts:message.ts+1,replyTo:message.id,scriptVersion:SCRIPT_VERSION,...extra};
+}
+// Lo invoca solamente el cliente que envía el mensaje; lectura/sincronización no generan respuestas.
+// La pregunta y su respuesta se guardan juntas en una única actualización del mismo ciclo de chat.
+function scriptedReply(message,data){
+ if(message.gm||message.bot||message.who==='Mecenas'||!['mecenas','general'].includes(message.ch))return {};
+ const responseId='mecenas_'+message.id;
+ if(data.messages?.[responseId])return {};
+ if(message.t==='roll'){
+  const pending=message.checkId?data.messages?.[message.checkId]:pendingCheck(data,message.userId,message.ch);
+  if(!pending||pending.requester!==message.userId||pending.ch!==message.ch||data.messages?.['resolved_'+pending.id]||(pending.epoch||'initial')!==(data.epoch||'initial'))return {};
+  const entry=getEntry(pending.topic),result=resolveCheck(entry,message);
+  if(!result)return {['messages/'+responseId]:reply(message,responseId,'La consulta sigue pendiente de '+pending.check+'. Usa esa competencia para completar la revisión.',{topic:'competencia-pendiente'})};
+  const id='resolved_'+pending.id;
+  return {['messages/'+id]:reply(message,id,result.answer,{topic:result.id,requester:message.userId,resolves:pending.id,checkTopic:pending.topic,succeeded:result.succeeded,grade:result.grade,improved:result.improved})};
+ }
+ if(message.t!=='text'||(message.ch==='general'&&!/(^|\s)@mecenas\b/i.test(message.msg)))return {};
+ const history=records(data);
+ const prior=history.filter(m=>m.bot&&(m.requester===message.userId||data.messages?.[m.replyTo]?.userId===message.userId)&&m.ch===message.ch).sort((a,b)=>a.ts-b.ts).at(-1);
+ const entry=answerQuestion(message.msg.replace(/@mecenas\b/gi,''),{topic:prior?.checkTopic||prior?.contextTopic||prior?.topic});
+ const extra={topic:entry.id};let answer=entry.answer;
+ if(entry.check){
+  const previous=records(data).filter(m=>m.resolves&&m.requester===message.userId&&m.checkTopic===entry.id).sort((a,b)=>a.ts-b.ts).at(-1);
+  const known=history.filter(m=>m.resolves&&m.checkTopic===entry.id&&m.succeeded&&['mecenas','general'].includes(m.ch)).sort((a,b)=>(b.grade||0)-(a.grade||0)).at(0);
+  const pending=pendingCheck(data,message.userId,message.ch);
+  if(known&&(!previous?.succeeded||known.grade>previous.grade)){answer='Esa información ya está contrastada en el dossier compartido. '+known.msg;extra.topic='informacion-compartida';extra.contextTopic=entry.id;}
+  else if(previous){answer='Esa documentación ya se ha revisado. '+previous.msg+' Para una nueva revisión, solicita otra fuente a Control.';extra.topic='revision-previa';extra.contextTopic=entry.id;}
+  else if(known){answer='Esa información ya está contrastada en el dossier compartido. '+known.msg;extra.topic='informacion-compartida';extra.contextTopic=entry.id;}
+  else if(pending){answer='Tienes una revisión pendiente de '+pending.check+'. Complétala desde tu ficha antes de abrir otra.';extra.topic='revision-pendiente';extra.contextTopic=pending.topic;}
+  else{extra.check=allowedSkills(entry.check).join(' / ');extra.checkSkills=allowedSkills(entry.check);extra.checkTitle=entry.title;extra.difficulty=entry.check.difficulty||'regular';extra.requester=message.userId;answer+=' Competencia: '+extra.check+'. Dificultad: '+(extra.difficulty==='dificil'?'difícil':extra.difficulty)+'. Abre «Evaluar» para contrastarla.';}
+ }
+ return {['messages/'+responseId]:reply(message,responseId,answer,extra)};
+}
+
+exports.SCRIPT_VERSION=SCRIPT_VERSION;
+exports.pendingCheck=pendingCheck;
+exports.scriptedReply=scriptedReply;
 },
 "web/js/atlas.js":function(load,exports){
 const THREE=load("work/vendor/three.module.js");

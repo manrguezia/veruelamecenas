@@ -1,17 +1,18 @@
 import {OPERATIVOS,CHARS,SKILLBASE} from './characters.js';
 import {CONFIG,MAP_TILES,DEVICES,PATROL,PLAN_FIELDS,ZONE_INFO,SECURITY_COLORS} from './scenario.js';
-import {FAQ,answerQuestion,resolveCheck,normalize} from './mecenas.js';
+import {FAQ,answerQuestion,normalize,canUseSkill} from './mecenas.js?v=guion-2';
 import {createStore} from './store.js?v=2';
 import {channelsFor,summarize} from './conversations.js';
 import {playAccessSequence} from './access-sequence.js';
 import {createRoomGallery} from './room-gallery.js';
+import {scriptedReply,pendingCheck} from './mecenas-script.js?v=guion-2';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e;};
 const button=(text,action)=>{const b=node('button',text);b.type='button';b.onclick=action;return b;};
 const uid=()=>crypto.randomUUID();
 const localMode=location.protocol==='file:'||new URLSearchParams(location.search).get('local')==='1';
 let loginBusy=false;
-let user,store,atlas,currentChannel='mecenas',viewedId,chatSignature='',mapInstance,loadingMap=false,readSeen={},mecenasErrorUntil=0;
+let user,store,atlas,currentChannel='mecenas',viewedId,chatSignature='',mapInstance,loadingMap=false,readSeen={},selectedCheckId=null;
 const roomGallery=createRoomGallery();
 const labels={camaras:'Cámaras',alarmas:'Alarmas',rondas:'Rondas',garitas:'Garitas',accesos:'Accesos',objetivos:'Objetivos'};
 const zoneLabels={'iglesia':'Iglesia','claustro':'Claustro','sala-capitular':'Sala Capitular','sacristia':'Sacristía','refectorio':'Refectorio','dependencias':'Dependencias','scriptorium':'Scriptorium','dormitorio':'Dormitorio / Salón de Reyes','cocina':'Cocina','cilla':'Cilla / Almacén','plano-documental':'Trazado del plano','palacio-abacial':'Palacio Abacial','porteria-oficinas':'Portería / Oficinas','hospederia':'Hospedería','monasterio-nuevo':'Monasterio nuevo','recinto':'Recinto y torres','terreno':'Terreno','servicios':'Aljibe, molino y anexos'};
@@ -24,8 +25,8 @@ $('#loginForm').addEventListener('submit',async e=>{
  if(!enter){$('#loginError').textContent=accepted?'Enlace cancelado. Introduce de nuevo tu clave.':'Acceso no autorizado. Comprueba tu identidad y tu clave.';$('#pin').focus();return;}
  user=o;viewedId=o.gm?'marina':o.id;$('#pin').value='';$('#login').hidden=true;$('#app').hidden=false;$('#identity').textContent=o.name;
  $('#controlTab').hidden=!user.gm;buildPlan();buildChannels();buildSuggestions();
- store=createStore(data=>{renderChat(data);renderPlan(data);renderFindings(data);renderControl(data);},text=>{if(Date.now()>=mecenasErrorUntil)$('#syncStatus').textContent=text;$('#planStatus').textContent=text;},{database:localMode?'':CONFIG.database});
- try{const {createAtlas}=await import('./atlas.js?v=layers-1');atlas=createAtlas($('#c3d'),showSelection);buildLayers();$('#scanToggle').setAttribute('aria-pressed',String(atlas.scan));}
+ store=createStore(data=>{renderChat(data);renderPlan(data);renderFindings(data);renderControl(data);},text=>{$('#syncStatus').textContent=text;$('#planStatus').textContent=text;},{database:localMode?'':CONFIG.database});
+ try{const {createAtlas}=await import('./atlas.js?v=guion-2');atlas=createAtlas($('#c3d'),showSelection);buildLayers();$('#scanToggle').setAttribute('aria-pressed',String(atlas.scan));}
  catch(err){$('#atlasError').hidden=false;$('#atlasError').textContent='No se ha podido cargar el visor 3D. El chat, el dossier y el plan siguen disponibles. Comprueba la conexión o el soporte WebGL y recarga la página.';console.error(err);buildLayers();}
 });
 $('#logout').onclick=()=>{store?.stop();atlas?.dispose();location.reload();};
@@ -74,7 +75,7 @@ function showSelection({zone,device}){
  const photoZone=zone||device?.zone;if(photoZone)roomGallery.select(photoZone,zoneLabels[photoZone]||photoZone);
  $('#selection').hidden=false;$('#selectionActions').replaceChildren();
  if(device){$('#selectionType').textContent=device.id+' / '+labels[device.layer];$('#selectionTitle').textContent=device.name;$('#selectionText').textContent=device.detail;
-  $('#selectionActions').append(button('Consultar al Mecenas',()=>ask('¿Qué sabemos de '+labels[device.layer].toLowerCase()+'?')));
+  $('#selectionActions').append(button('Consultar al Mecenas',()=>ask(['camaras','alarmas'].includes(device.layer)?'Quiero consultar la ficha de '+device.id:'¿Qué sabemos de '+labels[device.layer].toLowerCase()+'?')));
  }else{
   atlas?.select(zone);$('#selectionType').textContent='DEPENDENCIA / DOSSIER';$('#selectionTitle').textContent=zoneLabels[zone];$('#selectionText').textContent=ZONE_INFO[zone];
   $('#selectionActions').append(button('Acercar',()=>atlas?.focusZone(zone)),button('Dispositivos',()=>{
@@ -86,9 +87,9 @@ function showSelection({zone,device}){
 function allowedChannels(){return channelsFor(user);}
 function messages(data=store?.data){return Object.values(data?.messages||{}).filter(m=>m&&typeof m.msg==='string'&&Number.isFinite(m.ts)&&typeof m.id==='string').map(m=>{
  // Actualiza la presentación del guion antiguo sin modificar el historial almacenado.
- const entry=m.bot?FAQ.find(f=>f.id===m.topic):null;
+ const entry=m.bot&&!m.scriptVersion?FAQ.find(f=>f.id===m.topic):null;
  let text=entry?entry.answer:m.msg;
- if(m.bot){
+ if(m.bot&&!m.scriptVersion){
   if(m.topic==='mesa')text=answerQuestion('desactivo').answer;
   else if(m.topic==='fallback')text=answerQuestion('dato no catalogado').answer;
   text=text.replaceAll('con el Máster','con Control').replaceAll('para el Máster','para Control');
@@ -108,27 +109,16 @@ function buildChannels(){
 }
 function buildSuggestions(){
  $('#suggestions').replaceChildren();if(!['mecenas','general'].includes(currentChannel))return;
- for(const [label,q]of [['Encargo',FAQ[0].title],['Cámaras',FAQ[3].title],['Rondas',FAQ[5].title],['Analizar','Quiero analizar el dossier de cámaras']])$('#suggestions').append(button(label,()=>ask(q)));
+ for(const [label,q]of [['Encargo',FAQ[0].title],['Cámaras',FAQ[3].title],['Rondas',FAQ[5].title],['Analizar','Quiero analizar el dossier de cámaras'],['Personal','¿Quién trabaja allí?'],['Proveedores','¿Qué proveedores participan?'],['Residentes','¿Quiénes viven allí?'],['Ayuda','¿Sobre qué puedo preguntar?']])$('#suggestions').append(button(label,()=>ask(q)));
 }
 function ask(q){currentChannel='mecenas';chatSignature='';$('#chat').classList.add('open');send(q);buildChannels();buildSuggestions();}
 async function send(text){
  const msg=String(text).trim().slice(0,1200);if(!msg||!user||!store||!allowedChannels().some(c=>c.id===currentChannel))return;
  const id=uid(),ts=Date.now(),record={id,msg,who:user.name,userId:user.id,ch:currentChannel,ts,t:'text',gm:!!user.gm};
  const patch={['messages/'+id]:record};
- // Las respuestas las publica el flujo remoto del Mecenas. Control puede intervenir
- // escribiendo normalmente; sus mensajes nunca generan una respuesta automática.
+ record.mecenasMode='script';
+ Object.assign(patch,scriptedReply(record,store.data));
  store.put(patch);$('#chatInput').value='';$('#chatLog').scrollTop=$('#chatLog').scrollHeight;
- if(!user.gm&&(currentChannel==='mecenas'||currentChannel==='general'||currentChannel.startsWith('priv_'))){await store.flush();void llamarMecenas(id);}
-}
-async function llamarMecenas(messageId){
- const endpoint=CONFIG.mecenasEndpoint;
- if(!endpoint||endpoint.includes('REEMPLAZA-ESTA-URL')){ $('#syncStatus').textContent='El Mecenas aún no está conectado.';return; }
- try{
-  $('#syncStatus').textContent='Consultando al Mecenas…';
-  const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messageId})});
-  if(!res.ok)throw Error('HTTP '+res.status);
-  $('#syncStatus').textContent='El Mecenas está preparando una respuesta…';
- }catch(err){console.error('Mecenas remoto:',err);mecenasErrorUntil=Date.now()+15000;$('#syncStatus').textContent='El Mecenas ha devuelto un error. Revisa los registros del Worker.';}
 }
 $('#chatForm').onsubmit=e=>{e.preventDefault();send($('#chatInput').value);};
 $('#chatInput').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send(e.currentTarget.value);}};
@@ -139,7 +129,7 @@ function renderChat(data){
   log.replaceChildren();for(const m of list){const e=node('article',null,'message'+(m.bot?' bot':'')+(m.t==='roll'?' roll':''));e.dataset.message=m.id;
    const visibleMessage=m.t==='roll'&&!user.gm?`Tirada de ${m.label} enviada al Mecenas.`:m.msg;
    e.append(node('div',m.who+' · '+new Date(m.ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),'author'),node('p',visibleMessage));
-  if(m.check&&m.requester===user.id&&!data.messages['resolved_'+m.id])e.append(button('Evaluar · '+m.check,()=>openSheet()));
+  if(m.check&&m.requester===user.id&&!data.messages['resolved_'+m.id])e.append(button('Evaluar · '+m.check,()=>{selectedCheckId=m.id;currentChannel=m.ch;viewedId=user.id;openSheet();}));
   log.append(e);
  }
  if(!list.length)log.append(node('p',currentChannel==='mecenas'?'El Mecenas está disponible. Pregunta por el encargo o utiliza una de las consultas sugeridas.':currentChannel==='general'?'Canal del equipo. Las preguntas al Mecenas pueden dirigirse con @mecenas.':'Sin mensajes todavía. Este enlace es visible para sus interlocutores y Control.','empty'));
@@ -165,31 +155,37 @@ $('#exportPlan').onclick=()=>{
  const lines=['# Operación Veruela — Preparación','', 'Tres piezas intactas: La luz que nace de la sombra, Los durmientes y el relicario colonial.',''];
  for(const [id,label]of PLAN_FIELDS)lines.push('## '+label,store.data.plan[id]?.value||'Pendiente','');
  lines.push('## Información reunida');for(const m of messages())if(m.who==='Mecenas'&&['mecenas','general'].includes(m.ch))lines.push('- '+m.msg);
- lines.push('','## Siguiente paso','Confirmar responsabilidades, recursos y disponibilidad antes de acordar la salida.');
+ lines.push('','## Siguiente paso','Confirmar responsabilidades, recursos y disponibilidad para la noche del 31 de diciembre de 2026, fecha de cierre de la exposición.');
  const url=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/markdown;charset=utf-8'})),a=node('a');a.href=url;a.download='Veruela-plan-del-equipo.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-function pendingFor(id){return messages().filter(m=>m.check&&m.requester===id&&!store.data.messages['resolved_'+m.id]).at(-1);}
+function pendingFor(id){
+ const chosen=selectedCheckId&&store.data.messages[selectedCheckId];
+ if(chosen&&chosen.requester===id&&chosen.ch===currentChannel&&!store.data.messages['resolved_'+chosen.id])return chosen;
+ return pendingCheck(store.data,id,currentChannel);
+}
 function openSheet(){renderSheet(viewedId);$('#sheet').showModal();$('#sheet').scrollTop=0;}
-$('#sheetOpen').onclick=openSheet;$('#sheetClose').onclick=()=>$('#sheet').close();
+$('#sheetOpen').onclick=()=>{selectedCheckId=null;openSheet();};$('#sheetClose').onclick=()=>$('#sheet').close();
 function renderSheet(id){
  viewedId=id;$('#skillSearch').value='';$('#trainedOnly').checked=false;const c=CHARS[id],o=OPERATIVOS.find(x=>x.id===id);$('#sheetName').textContent=o.name;$('#sheetRole').textContent=o.role+' / '+id.toUpperCase();
  if(user.gm){$('#sheetPick').hidden=false;if(!$('#sheetPick').options.length)for(const p of OPERATIVOS.filter(x=>!x.gm)){const opt=node('option',p.name);opt.value=p.id;$('#sheetPick').append(opt);}$('#sheetPick').value=id;$('#sheetPick').onchange=e=>renderSheet(e.target.value);}
- const pending=pendingFor(id);$('#pendingCheck').hidden=!pending;$('#pendingCheck').textContent=pending?'Consulta pendiente: '+pending.check+'. Usa esa habilidad para completar el análisis.':'';
+ const pending=pendingFor(id);$('#pendingCheck').hidden=!pending;$('#pendingCheck').textContent=pending?'Consulta: '+(pending.checkTitle||'Revisión documental')+'. Competencia: '+pending.check+'. Dificultad: '+(pending.difficulty==='dificil'?'difícil':pending.difficulty||'regular')+'. Selecciona una de las competencias indicadas.':'';
  $('#resources').replaceChildren();for(const [name,value,detail]of [['Puntos de vida',c.pv,'Máximo '+c.pv],['Temple',c.temple,'Valor inicial'],['Suerte',c.suerte,'Valor inicial']]){const card=node('article',null,'resource');card.append(node('span',name),node('strong',value),node('small',detail));$('#resources').append(card);}
  const names={FUE:'Fuerza',CON:'Constitución',DES:'Destreza',APA:'Apariencia',INT:'Inteligencia',POD:'Poder',EDU:'Educación',TAM:'Tamaño'};
- $('#stats').replaceChildren();for(const [k,v]of Object.entries(c.stats)){const b=button('',()=>roll(k,v));b.append(node('span',names[k]),node('strong',v),node('small',k+' / '+Math.floor(v/2)+' / '+Math.floor(v/5)));$('#stats').append(b);}
+ $('#stats').replaceChildren();for(const [k,v]of Object.entries(c.stats)){const b=button('',()=>roll(k,v));b.disabled=!!pending;b.append(node('span',names[k]),node('strong',v),node('small',k+' / '+Math.floor(v/2)+' / '+Math.floor(v/5)));$('#stats').append(b);}
  $('#derived').replaceChildren();for(const [label,value]of [['Movimiento',c.mov],['Bonificación al daño',c.bd],['Corpulencia',c.corp]]){const el=node('div');el.append(node('span',label),node('b',value));$('#derived').append(el);}
  $('#skills').replaceChildren();const skills={...c.skills};for(const [name,value]of SKILLBASE){if(Object.keys(skills).some(k=>normalize(k.split('(')[0])===normalize(name)))continue;skills[name]=value==='DES2'?Math.floor(c.stats.DES/2):value==='EDU'?c.stats.EDU:value;}
- for(const [name,val]of Object.entries(skills).sort((a,b)=>a[0].localeCompare(b[0],'es'))){const b=button(name,()=>roll(name,val));b.dataset.trained=String(name in c.skills);b.dataset.skill=normalize(name);b.append(node('b',val+'%'),node('small',Math.floor(val/2)+' / '+Math.floor(val/5)),node('span',name in c.skills?'Entrenada':'Base','skill-kind'));$('#skills').append(b);}
+ const quick=$('#pendingSkills');quick.replaceChildren();quick.hidden=!pending;if(pending)for(const [name,val]of Object.entries(skills))if(canUseSkill({skills:pending.checkSkills||[pending.check]},name))quick.append(button('Evaluar '+name+' · '+val+'%',()=>roll(name,val)));
+ for(const [name,val]of Object.entries(skills).sort((a,b)=>a[0].localeCompare(b[0],'es'))){const b=button(name,()=>roll(name,val));if(pending){const valid=canUseSkill({skills:pending.checkSkills||[pending.check]},name);b.disabled=!valid;b.classList.toggle('eligible-check',valid);}b.dataset.trained=String(name in c.skills);b.dataset.skill=normalize(name);b.append(node('b',val+'%'),node('small',Math.floor(val/2)+' / '+Math.floor(val/5)),node('span',name in c.skills?'Entrenada':'Base','skill-kind'));$('#skills').append(b);}
 }
 function filterSkills(){const q=normalize($('#skillSearch').value);for(const b of $$('#skills button'))b.hidden=!b.dataset.skill.includes(q)||($('#trainedOnly').checked&&b.dataset.trained!=='true');}
 $('#skillSearch').oninput=filterSkills;$('#trainedOnly').onchange=filterSkills;
 export function rollLevel(r,v){if(r===1)return 'EVALUACIÓN EXCEPCIONAL';if(r==100||(v<50&&r>=96))return 'REVISIÓN NECESARIA';if(r<=Math.floor(v/5))return 'ANÁLISIS CONCLUYENTE';if(r<=Math.floor(v/2))return 'HALLAZGO SÓLIDO';if(r<=v)return 'ANÁLISIS FAVORABLE';return 'SIN CONCLUSIÓN';}
 function roll(label,val){
- const pending=user.gm?null:pendingFor(viewedId),id=uid(),r=1+Math.floor(Math.random()*100),ts=Date.now(),o=OPERATIVOS.find(x=>x.id===viewedId);
- const channel=pending?.ch||currentChannel,record={id,msg:'Revisión de '+label+': '+rollLevel(r,val),who:o.name,userId:user.id,gm:!!user.gm,t:'roll',label,val,roll:r,ts,ch:channel};const patch={['messages/'+id]:record};
-  currentChannel=channel;store.put(patch);$('#sheet').close();$('#chat').classList.add('open');buildSuggestions();
-  if(!user.gm&&(channel==='mecenas'||channel==='general'||channel.startsWith('priv_')))void (async()=>{await store.flush();await llamarMecenas(id);})();
+ const pending=user.gm?null:pendingFor(viewedId);if(pending&&!canUseSkill({skills:pending.checkSkills||[pending.check]},label))return;
+ const id=uid(),r=1+Math.floor(Math.random()*100),ts=Date.now(),o=OPERATIVOS.find(x=>x.id===viewedId);
+ const channel=pending?.ch||currentChannel,record={id,msg:'Revisión de '+label+': '+rollLevel(r,val),who:o.name,userId:user.id,gm:!!user.gm,t:'roll',label,val,roll:r,ts,ch:channel,mecenasMode:'script',...(pending?{checkId:pending.id}:{})};const patch={['messages/'+id]:record};
+  Object.assign(patch,scriptedReply(record,store.data));
+  currentChannel=channel;store.put(patch);selectedCheckId=null;$('#sheet').close();$('#chat').classList.add('open');buildSuggestions();
 }
 async function openMap(){
  if(mapInstance){mapInstance.invalidateSize();return;}if(loadingMap)return;loadingMap=true;
